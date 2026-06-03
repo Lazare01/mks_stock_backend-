@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Static & media
+staticfiles/
+media/
+
+# Environment variables
+.env
+.env.*
+
+# Migrations (optionnel)
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# Django collectstatic
+static/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Coverage / tests
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+nosetests.xml
+coverage.xml
+
+# mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Cache
+.cache/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Redis
+dump.rdb
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# Gunicorn
+gunicorn.pid
+
+# Build files
+build/
+dist/
+*.egg-info/
+
+# Node modules (si React dans le même projet)
+node_modules/
+
+# Secrets / keys
+*.pem
+*.key
+
+# IDE files
+*.swp
+*.swo
