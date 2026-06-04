@@ -20,6 +20,7 @@ ROLE_PERMISSIONS = {
 
     UserRole.CENTRAL_MGR: [
         AppPermission.DASHBOARD_VIEW,
+        AppPermission.USER_MANAGE,
         AppPermission.STOCK_VIEW,
         AppPermission.STOCK_MANAGE,
         AppPermission.TRANSFER_MANAGE,
