@@ -3,7 +3,20 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import User, UserRole
+from .services.user_service import UserService
+from django.utils import timezone
 
+
+from inventory.models import (
+    Warehouse,
+    WarehouseType,
+    ManagerAssignment,
+)
+
+from core.models import (
+    User,
+    UserWarehouseAccess,
+)
 
 # =========================================================
 # REGISTER
@@ -59,9 +72,56 @@ class RegisterUserSerializer(serializers.ModelSerializer):
     # =====================================================
 
 
+    # def create(self, validated_data):
+
+    #     password = validated_data.pop("password")
+
+    #     user = User.objects.create_user(
+    #         **validated_data
+    #     )
+
+    #     user.set_password(password)
+    #     user.save()
+
+    #     return user
+    
+   
     def create(self, validated_data):
+        
 
         password = validated_data.pop("password")
+        
+        # =====================================================
+        # REACTIVER UN UTILISATEUR SUPPRIME
+        # =====================================================
+            
+        user = User.all_objects.filter(
+            username=validated_data["username"]
+        ).first()
+        
+        if user and user.is_deleted:
+
+            user.is_deleted = False
+
+            # si tu utilises is_active
+            user.is_active = True
+
+            user.role = validated_data["role"]
+
+            user.phone_number = validated_data.get(
+                "phone_number",
+                user.phone_number
+            )
+
+            user.set_password(password)
+
+            user.save()
+
+            return user
+        
+        # =====================================================
+        # CREATION NORMALE
+        # =====================================================
 
         user = User.objects.create_user(
             **validated_data
@@ -69,6 +129,45 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
         user.set_password(password)
         user.save()
+
+        # =====================================================
+        # AFFECTATION AUTOMATIQUE CENTRAL MANAGER
+        # =====================================================
+
+        if user.role == UserRole.CENTRAL_MGR:
+
+            central_warehouse = Warehouse.objects.filter(
+                warehouse_type=WarehouseType.CENTRAL
+            ).first()
+
+            if not central_warehouse:
+                raise serializers.ValidationError(
+                    "Aucun warehouse CENTRAL n'existe."
+                )
+
+            # Accès au warehouse central
+            UserWarehouseAccess.objects.get_or_create(
+                user=user,
+                warehouse=central_warehouse,
+                defaults={
+                    "can_view": True,
+                    "can_manage_stock": True,
+                    "can_transfer_stock": True,
+                    "can_manage_sales": True,
+                    "can_manage_installations": True,
+                    "is_active": True,
+                }
+            )
+
+            # Affectation comme manager du warehouse central
+            ManagerAssignment.objects.get_or_create(
+                manager=user,
+                warehouse=central_warehouse,
+                defaults={
+                    "start_date": timezone.now().date(),
+                    "is_active": True,
+                }
+            )
 
         return user
 
@@ -125,14 +224,40 @@ class ObtenTokenPairSerializer(TokenObtainPairSerializer):
         return data
     
 
+# =========================================================
+# ALL USERS
+# =========================================================
+class UserCreateSerializer(serializers.ModelSerializer):
 
+    password = serializers.CharField(
+        write_only=True
+    )
+
+    class Meta:
+        model = User
+
+        fields = (
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "role",
+            "password",
+        )
+
+    def create(self, validated_data):
+
+        return UserService.create_user(
+            validated_data
+        )
 
 # =========================================================
 # ALL USERS
 # =========================================================
 
 
-class UsersSerialiser(serializers.ModelSerializer):
+class UsersListSerialiser(serializers.ModelSerializer):
     class Meta:
         model=User
         fields=[

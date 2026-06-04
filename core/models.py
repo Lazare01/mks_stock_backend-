@@ -8,7 +8,16 @@ from django.utils import timezone
 from core.constants.user_roles import UserRole
 
 
-class UserManager(BaseUserManager):
+# permetter  de filtrer les utilisateurs NO DELETED
+class ActiveManager(models.Manager):
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            is_deleted=False
+        )
+        
+class UserManager(BaseUserManager,ActiveManager):
+    
 
     def create_user(self, username, password=None, **extra_fields):
 
@@ -50,6 +59,10 @@ class TimeStampedModel(models.Model):
     - Traçabilité
     - Soft delete
     """
+    
+    objects=ActiveManager()
+    
+    all_objects = models.Manager()
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
