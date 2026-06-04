@@ -15,8 +15,11 @@ from .models import User
 from .serializers import (
     RegisterUserSerializer,
     ObtenTokenPairSerializer,
-    UsersSerialiser,
+    UsersListSerialiser,
+    UserCreateSerializer,
 )
+
+from .base_viewset import SoftDeleteModelViewSet
 
 from .permissions import CanUserManager
 
@@ -71,9 +74,8 @@ class AuthViewSet(viewsets.GenericViewSet):
                 "username": user.username,
                 "phone_number": user.phone_number,
                 "role": user.role,
-                "permissions":user.permissions,
-                "is_active": user.is_active
-             
+                "permissions": user.permissions,
+                "is_active": user.is_active,
             }
         )
 
@@ -93,12 +95,37 @@ class LoginView(TokenObtainPairView):
 # =========================================================
 
 
-class UsersViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated,CanUserManager]
-    serializer_class = UsersSerialiser
+class UsersViewSet(SoftDeleteModelViewSet):
+    permission_classes = [IsAuthenticated, CanUserManager]
+    serializer_class = UsersListSerialiser
 
     def get_queryset(self):
-        return User.objects.all().exclude(is_superuser=True)
+
+        if self.request.query_params.get("all") == "true":
+            return User.all_objects.exclude(is_superuser=True).exclude(
+                id=self.request.user.id
+            )
+
+        if self.request.query_params.get("deleted") == "true":
+            return (
+                User.all_objects.filter(is_deleted=True)
+                .exclude(is_superuser=True)
+                .exclude(id=self.request.user.id)
+            )
+
+        return User.objects.exclude(is_superuser=True).exclude(id=self.request.user.id)
+
+    @action(detail=True, methods=["delete"], url_path="hard-delete")
+    def hard_delete(self, request, pk=None):
+
+        user = User.all_objects.get(pk=pk)
+
+        user.delete()
+
+        return Response(
+            {"message": "Utilisateur supprimé définitivement."},
+            status=status.HTTP_204_NO_CONTENT,
+        )
 
 
 # **** **** ***** ***** *************************

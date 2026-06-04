@@ -42,6 +42,14 @@ class WarehouseViewSet(viewsets.ModelViewSet):
 
         if user.is_superuser:
             return queryset
+        
+        # =====================================================
+        # SUPER ADMIN
+        # =====================================================
+        
+        if user.role == "CENTRAL_MGR":
+            return queryset
+        
 
         # =====================================================
         # IDS DES AGENCES AUTORISEES

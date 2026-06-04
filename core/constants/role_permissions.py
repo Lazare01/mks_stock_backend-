@@ -25,6 +25,7 @@ ROLE_PERMISSIONS = {
         AppPermission.STOCK_MANAGE,
         AppPermission.TRANSFER_MANAGE,
         AppPermission.REPORT_VIEW,
+       
     ],
 
     UserRole.BRANCH_MGR: [
