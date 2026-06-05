@@ -1,5 +1,7 @@
 import uuid
 
+from django.db import transaction
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
@@ -125,6 +127,40 @@ class User(AbstractUser, TimeStampedModel):
 
         # =====================================================
 
+
+# logique de suppression 
+
+    @transaction.atomic
+    def soft_delete(self):
+        """
+        Suppression logique d'un utilisateur.
+        """
+
+        if self.is_deleted:
+            return
+
+        # Désactiver les accès aux succursales
+        self.warehouse_accesses.filter(
+            is_active=True
+        ).update(
+            is_active=False
+        )
+
+        # Clôturer les affectations actives
+        self.manager_assignments.filter(
+            is_active=True
+        ).update(
+            is_active=False,
+            end_date=timezone.now().date()
+        )
+
+        # Marquer l'utilisateur supprimé
+        self.is_deleted = True
+
+        self.save(
+            update_fields=["is_deleted"]
+        )
+    
     # WAREHOUSE ACCESS
     # =====================================================
 

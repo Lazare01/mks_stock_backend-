@@ -100,7 +100,7 @@ class LoginView(TokenObtainPairView):
 # =========================================================
 
 
-class UsersViewSet(SoftDeleteModelViewSet):
+class UsersViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, CanUserManager]
     serializer_class = UsersListSerialiser
 

@@ -258,6 +258,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UsersListSerialiser(serializers.ModelSerializer):
+    
+    has_warehouse_access = serializers.SerializerMethodField()
+    warehouse_name = serializers.SerializerMethodField()
     class Meta:
         model=User
         fields=[
@@ -267,5 +270,19 @@ class UsersListSerialiser(serializers.ModelSerializer):
             "phone_number",
             "is_active",
             "created_at",
-            "is_deleted"
+            "is_deleted",
+            "has_warehouse_access",
+            "warehouse_name"
         ]
+    
+    def get_has_warehouse_access(self, obj):
+        return obj.warehouse_accesses.filter(
+            is_active=True
+        ).exists()
+        
+    def get_warehouse_name(self, obj):
+        access = obj.warehouse_accesses.filter(
+            is_active=True
+        ).select_related("warehouse").first()
+
+        return access.warehouse.name if access else None
