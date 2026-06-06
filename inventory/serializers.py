@@ -97,7 +97,9 @@ class StockEntryItemCreateSerializer(serializers.Serializer):
 
 class StockEntryCreateSerializer(serializers.Serializer):
 
-    supplier_id = serializers.UUIDField()
+    supplier_name = serializers.CharField(
+    max_length=255
+)
 
     warehouse_id = serializers.UUIDField()
 
@@ -128,18 +130,7 @@ class StockEntryCreateSerializer(serializers.Serializer):
 
         return value
 
-    def validate_supplier_id(self, value):
-
-        if not Supplier.objects.filter(
-            id=value,
-            is_active=True,
-        ).exists():
-
-            raise serializers.ValidationError(
-                "Fournisseur introuvable."
-            )
-
-        return value
+    
 
     def validate_warehouse_id(self, value):
 
@@ -295,3 +286,89 @@ class StockEntryReceiveSerializer(
             )
 
         return value
+
+
+# =========================================================
+# STOCK SUMMARY
+# =========================================================
+
+class ProductStockSummarySerializer(
+    serializers.Serializer
+):
+
+    id = serializers.UUIDField()
+
+    name = serializers.CharField()
+
+    sku = serializers.CharField()
+
+    category = serializers.CharField()
+
+    central_stock = serializers.IntegerField()
+
+    branch_stock = serializers.IntegerField()
+
+    purchase_price = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+    )
+
+    selling_price = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+    )
+    
+# =========================================================
+# STOCK MOVEMENTS
+# =========================================================
+
+class StockMovementSerializer(
+    serializers.Serializer
+):
+
+    id = serializers.UUIDField()
+
+    movement_type = serializers.CharField()
+
+    product_name = serializers.CharField()
+
+    serial_number = serializers.CharField()
+
+    movement_date = serializers.DateTimeField()
+
+    from_warehouse = serializers.CharField(
+        allow_null=True,
+    )
+
+    to_warehouse = serializers.CharField(
+        allow_null=True,
+    )
+    
+    
+    # =========================================================
+# PRODUCTS
+# =========================================================
+
+from inventory.models import Product
+
+
+class ProductSerializer(serializers.ModelSerializer):
+
+    category_name = serializers.CharField(
+        source="category.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = Product
+
+        fields = [
+            "id",
+            "name",
+            "sku",
+            "category",
+            "category_name",
+            "purchase_price",
+            "selling_price",
+            "description",
+        ]

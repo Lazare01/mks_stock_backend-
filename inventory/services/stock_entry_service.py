@@ -63,7 +63,7 @@ class StockEntryService:
     @transaction.atomic
     def create_stock_entry(
         *,
-        supplier_id,
+        supplier_name,
         warehouse_id,
         invoice_number,
         expected_delivery_date,
@@ -71,16 +71,14 @@ class StockEntryService:
         items,
         created_by,
     ):
+        
+        supplier, _ = Supplier.objects.get_or_create(
+        name=supplier_name.strip(),
+        defaults={
+            "is_active": True,
+        },
+)
 
-        # Validation fournisseur
-
-        supplier = Supplier.objects.filter(
-            id=supplier_id,
-            is_active=True,
-        ).first()
-
-        if not supplier:
-            raise ValidationError("Fournisseur introuvable.")
 
         # Validation warehouse
 
@@ -135,12 +133,31 @@ class StockEntryService:
     
     @staticmethod
     def validate_serials(serials):
-        # Vérification doublons payload
+
+        # =====================================================
+        # SERIALS DU PAYLOAD
+        # =====================================================
+
         payload_serials = set()
+
+        # =====================================================
+        # MACS DU PAYLOAD
+        # =====================================================
+
+        payload_macs = set()
 
         for row in serials:
 
+            # =================================================
+            # SERIAL
+            # =================================================
+
             serial = row["serial_number"].strip()
+            
+            if not serial:
+                raise ValidationError(
+                    "Le numéro de série est obligatoire."
+    )
 
             if serial in payload_serials:
 
@@ -149,19 +166,56 @@ class StockEntryService:
                 )
 
             payload_serials.add(serial)
-    
-        # Vérification base
-        
+
+            # =================================================
+            # MAC ADDRESS
+            # =================================================
+
+            mac = row.get("mac_address")
+
+            if not mac:
+                continue
+
+            mac = mac.strip()
+
+            if mac in payload_macs:
+
+                raise ValidationError(
+                    f"MAC Address dupliquée : {mac}"
+                )
+
+            payload_macs.add(mac)
+
+        # =====================================================
+        # SERIAL DEJA EN BASE
+        # =====================================================
+
         existing_serials = StockItem.objects.filter(
-        serial_number__in=payload_serials
-            )
+            serial_number__in=payload_serials
+        )
 
         if existing_serials.exists():
 
             serial = existing_serials.first().serial_number
 
             raise ValidationError(
-            f"Le serial {serial} existe déjà."
+                f"Le serial {serial} existe déjà."
+            )
+
+        # =====================================================
+        # MAC DEJA EN BASE
+        # =====================================================
+
+        existing_macs = StockItem.objects.filter(
+            mac_address__in=payload_macs
+        )
+
+        if existing_macs.exists():
+
+            mac = existing_macs.first().mac_address
+
+            raise ValidationError(
+                f"La MAC Address {mac} existe déjà."
             )
     
     # Réception entrée fournisseur
@@ -246,3 +300,37 @@ class StockEntryService:
                     notes=f"Entrée fournisseur {stock_entry.reference}",
                     created_by=user,
                 )
+
+            entry_item.received_quantity = (
+                entry_item.quantity
+            )
+
+            entry_item.save(
+                update_fields=[
+                    "received_quantity"
+                ]
+            )
+            
+            stock_entry.status = (
+                StockEntryStatus.RECEIVED
+            )
+
+            stock_entry.received_date = (
+                timezone.now()
+            )
+
+            stock_entry.notes = (
+                f"{stock_entry.notes}\n\n{notes}"
+                if notes
+                else stock_entry.notes
+            )
+
+            stock_entry.save(
+                update_fields=[
+                    "status",
+                    "received_date",
+                    "notes",
+                ]
+            )
+            
+            return stock_entry

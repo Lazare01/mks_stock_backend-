@@ -1,14 +1,56 @@
-# urls.py
-
-from rest_framework.routers import DefaultRouter
 from django.urls import path, include
 
-from .views import WarehouseViewSet
+from rest_framework.routers import DefaultRouter
+
+from inventory.views import (
+    WarehouseViewSet,
+    SupplierViewSet,
+    StockEntryViewSet,
+    StockSummaryView,
+    StockMovementListView,
+    ProductViewSet
+)
 
 router = DefaultRouter()
 
-router.register(r"warehouses", WarehouseViewSet, basename="warehouse")
+router.register(
+    r"warehouses",
+    WarehouseViewSet,
+    basename="warehouse",
+)
+
+router.register(
+    r"suppliers",
+    SupplierViewSet,
+    basename="supplier",
+)
+
+router.register(
+    r"stock-entries",
+    StockEntryViewSet,
+    basename="stock-entry",
+)
+
+router.register(
+    r"products",
+    ProductViewSet,
+    basename="products",
+)
+
 
 urlpatterns = [
-    path("", include(router.urls)),
+    path(
+        "stock-summary/",
+        StockSummaryView.as_view(),
+        name="stock-summary",
+    ),
+    path(
+    "stock-movements/",
+    StockMovementListView.as_view(),
+    name="stock-movements",
+),
+    path(
+        "",
+        include(router.urls),
+    ),
 ]

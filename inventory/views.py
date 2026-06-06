@@ -1,8 +1,11 @@
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
+from rest_framework.decorators import action
+from django.db.models import Count
 from django.utils import timezone
 
 from rest_framework import viewsets, views, status
+from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from rest_framework.permissions import IsAuthenticated
@@ -16,7 +19,56 @@ from core.permissions import CanUserManager
 from core.models import UserWarehouseAccess,User
 from core.constants.user_roles import UserRole
 
-from .models import Warehouse, WarehouseType, ManagerAssignment
+from .models import (Warehouse, WarehouseType, ManagerAssignment,Product,StockEntry,StockMovement)
+
+
+
+
+from supplier.models import Supplier
+from supplier.serializers import SupplierSerializer
+
+from core.permissions import CanManageStock
+
+
+from inventory.serializers import (
+    
+    StockEntryCreateSerializer,
+    StockEntryListSerializer,
+    StockEntryDetailSerializer,
+    StockEntryReceiveSerializer,
+    ProductStockSummarySerializer,
+    StockMovementSerializer,
+    ProductSerializer
+    
+)
+
+from inventory.services.stock_entry_service import (
+    StockEntryService,
+)
+
+# ================================================================================================
+# ================================================================================================
+# ================================================================================================
+
+
+# =========================================================
+# PRODUCTS
+# =========================================================
+
+class ProductViewSet(viewsets.ReadOnlyModelViewSet):
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    serializer_class = ProductSerializer
+
+    queryset = (
+        Product.objects
+        .select_related("category")
+        .all()
+        .order_by("name")
+    )
 
 
 class WarehouseViewSet(viewsets.ModelViewSet):
@@ -133,4 +185,280 @@ class AssignBranchManagerView(views.APIView):
                 "assignment_id": assignment.id,
             },
             status=status.HTTP_201_CREATED,
+        )
+
+
+# =========================================================
+# SUPPLIERS
+# =========================================================
+
+class SupplierViewSet(viewsets.ModelViewSet):
+
+    queryset = Supplier.objects.all()
+
+    serializer_class = SupplierSerializer
+
+    permission_classes = [
+        IsAuthenticated,
+        CanManageStock,
+    ]
+
+
+# =========================================================
+# STOCK ENTRY
+# =========================================================
+
+class StockEntryViewSet(viewsets.ModelViewSet):
+
+    permission_classes = [
+        IsAuthenticated,
+        CanManageStock,
+    ]
+    
+    def get_queryset(self):
+
+        return (
+            StockEntry.objects
+            .select_related(
+                "supplier",
+                "warehouse",
+            )
+            .prefetch_related(
+                "items",
+                "items__product",
+            )
+            .order_by("-created_at")
+        )
+        
+    def get_serializer_class(self):
+
+        if self.action == "create":
+            return StockEntryCreateSerializer
+
+        if self.action == "retrieve":
+            return StockEntryDetailSerializer
+
+        if self.action == "receive":
+            return StockEntryReceiveSerializer
+
+        return StockEntryListSerializer
+    
+    
+    def create(self, request, *args, **kwargs):
+
+        serializer = self.get_serializer(
+            data=request.data
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        stock_entry = (
+            StockEntryService.create_stock_entry(
+                supplier_name=serializer.validated_data[
+                    "supplier_name"
+                ],
+                warehouse_id=serializer.validated_data[
+                    "warehouse_id"
+                ],
+                invoice_number=serializer.validated_data[
+                    "invoice_number"
+                ],
+                expected_delivery_date=serializer.validated_data.get(
+                    "expected_delivery_date"
+                ),
+                notes=serializer.validated_data.get(
+                    "notes"
+                ),
+                items=serializer.validated_data[
+                    "items"
+                ],
+                created_by=request.user,
+            )
+        )
+
+        return Response(
+            StockEntryDetailSerializer(
+                stock_entry
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+    
+    
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="receive",
+    )
+        
+    def receive(self, request, pk=None):
+
+        stock_entry = self.get_object()
+
+        serializer = self.get_serializer(
+            data=request.data
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        stock_entry = (
+            StockEntryService.receive_stock_entry(
+                stock_entry=stock_entry,
+                items=serializer.validated_data[
+                    "items"
+                ],
+                notes=serializer.validated_data.get(
+                    "notes"
+                ),
+                user=request.user,
+            )
+        )
+
+        return Response(
+            {
+                "message":
+                    "Réception effectuée avec succès.",
+                "reference":
+                    stock_entry.reference,
+            }
+        )
+        
+
+
+# =========================================================
+# STOCK SUMMARY
+# =========================================================
+
+class StockSummaryView(APIView):
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(self, request):
+
+        results = []
+
+        products = (
+            Product.objects
+            .select_related("category")
+            .all()
+        )
+
+        for product in products:
+
+            central_stock = (
+                product.stock_items.filter(
+                    status=StockItemStatus.AVAILABLE,
+                    warehouse__warehouse_type=
+                    WarehouseType.CENTRAL,
+                ).count()
+            )
+
+            branch_stock = (
+                product.stock_items.filter(
+                    status=StockItemStatus.AVAILABLE,
+                    warehouse__warehouse_type=
+                    WarehouseType.BRANCH,
+                ).count()
+            )
+
+            results.append(
+                {
+                    "id": product.id,
+                    "name": product.name,
+                    "sku": product.sku,
+                    "category": product.category.name,
+                    "central_stock": central_stock,
+                    "branch_stock": branch_stock,
+                    "purchase_price":
+                        product.purchase_price,
+                    "selling_price":
+                        product.selling_price,
+                }
+            )
+
+        serializer = (
+            ProductStockSummarySerializer(
+                results,
+                many=True,
+            )
+        )
+
+        return Response(
+            serializer.data
+        )
+
+# =========================================================
+# STOCK MOVEMENTS
+# =========================================================
+
+class StockMovementListView(APIView):
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(self, request):
+
+        results = []
+
+        movements = (
+            StockMovement.objects
+            .select_related(
+                "stock_item",
+                "stock_item__product",
+                "from_warehouse",
+                "to_warehouse",
+            )
+            .order_by(
+                "-movement_date"
+            )[:200]
+        )
+
+        for movement in movements:
+
+            results.append(
+                {
+                    "id": movement.id,
+                    "movement_type":
+                        movement.movement_type,
+
+                    "product_name":
+                        movement.stock_item.product.name,
+
+                    "serial_number":
+                        movement.stock_item.serial_number,
+
+                    "movement_date":
+                        movement.movement_date,
+
+                    "from_warehouse":
+                        (
+                            movement.from_warehouse.name
+                            if movement.from_warehouse
+                            else None
+                        ),
+
+                    "to_warehouse":
+                        (
+                            movement.to_warehouse.name
+                            if movement.to_warehouse
+                            else None
+                        ),
+                }
+            )
+
+        serializer = (
+            StockMovementSerializer(
+                results,
+                many=True,
+            )
+        )
+
+        return Response(
+            serializer.data
         )
