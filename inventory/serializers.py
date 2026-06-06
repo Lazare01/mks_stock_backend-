@@ -4,6 +4,16 @@ from rest_framework import serializers
 
 from .models import Warehouse
 
+from supplier.models import Supplier
+
+from inventory.models import (
+    Warehouse,
+    Product,
+    StockEntry,
+    StockEntryItem,
+    StockEntryStatus,
+)
+from supplier.serializers import SupplierSerializer
 
 class WarehouseSerializer(serializers.ModelSerializer):
 
@@ -44,3 +54,244 @@ class WarehouseSerializer(serializers.ModelSerializer):
             "email": manager.email,
             "full_name": manager.get_full_name(),
         }
+
+
+# =========================================================
+# STOCK ENTRY ITEM Utilisé pour l'affichage.
+# =========================================================
+
+class StockEntryItemSerializer(serializers.ModelSerializer):
+
+    product_name = serializers.CharField(
+        source="product.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = StockEntryItem
+
+        fields = [
+            "id",
+            "product",
+            "product_name",
+            "quantity",
+            "unit_cost",
+        ]
+
+# =========================================================
+# STOCK ENTRY ITEM Utilisé lors de la création.
+# ======================================
+class StockEntryItemCreateSerializer(serializers.Serializer):
+
+    product_id = serializers.UUIDField()
+
+    quantity = serializers.IntegerField(
+        min_value=1
+    )
+
+    unit_cost = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=0.01,
+    )
+
+class StockEntryCreateSerializer(serializers.Serializer):
+
+    supplier_id = serializers.UUIDField()
+
+    warehouse_id = serializers.UUIDField()
+
+    invoice_number = serializers.CharField(
+        max_length=150
+    )
+
+    expected_delivery_date = serializers.DateField(
+        required=False,
+        allow_null=True,
+    )
+
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+
+    items = StockEntryItemCreateSerializer(
+        many=True
+    )
+
+    def validate_items(self, value):
+
+        if not value:
+            raise serializers.ValidationError(
+                "Au moins un produit est requis."
+            )
+
+        return value
+
+    def validate_supplier_id(self, value):
+
+        if not Supplier.objects.filter(
+            id=value,
+            is_active=True,
+        ).exists():
+
+            raise serializers.ValidationError(
+                "Fournisseur introuvable."
+            )
+
+        return value
+
+    def validate_warehouse_id(self, value):
+
+        warehouse = Warehouse.objects.filter(
+            id=value
+        ).first()
+
+        if not warehouse:
+
+            raise serializers.ValidationError(
+                "Entrepôt introuvable."
+            )
+
+        return value
+
+# =========================================================
+# LIST STOCK ENTRY
+# =========================================================
+
+class StockEntryListSerializer(serializers.ModelSerializer):
+
+    supplier_name = serializers.CharField(
+        source="supplier.name",
+        read_only=True,
+    )
+
+    warehouse_name = serializers.CharField(
+        source="warehouse.name",
+        read_only=True,
+    )
+
+    item_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StockEntry
+
+        fields = [
+            "id",
+            "reference",
+            "supplier_name",
+            "warehouse_name",
+            "invoice_number",
+            "status",
+            "item_count",
+            "expected_delivery_date",
+            "received_date",
+            "created_at",
+        ]
+
+    def get_item_count(self, obj):
+
+        return obj.items.count()
+    
+
+# =========================================================
+# DETAIL STOCK ENTRY
+# =========================================================
+
+class StockEntryDetailSerializer(serializers.ModelSerializer):
+
+    supplier = SupplierSerializer(
+        read_only=True
+    )
+
+    warehouse_name = serializers.CharField(
+        source="warehouse.name",
+        read_only=True,
+    )
+
+    items = StockEntryItemSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    class Meta:
+        model = StockEntry
+
+        fields = [
+            "id",
+            "reference",
+            "supplier",
+            "warehouse",
+            "warehouse_name",
+            "invoice_number",
+            "invoice_file",
+            "status",
+            "expected_delivery_date",
+            "received_date",
+            "notes",
+            "items",
+            "created_at",
+            "updated_at",
+        ]
+        
+
+# =======================================================
+# Maintenant nous préparons l'import manuel ou Excel.
+# =======================================================
+
+# =========================================================
+# SERIAL INPUT
+# =========================================================
+
+class StockEntrySerialItemSerializer(
+    serializers.Serializer
+):
+
+    serial_number = serializers.CharField(
+        max_length=255
+    )
+
+    mac_address = serializers.CharField(
+        max_length=100,
+        required=False,
+        allow_blank=True,
+    )
+    
+
+class StockEntryReceiveProductSerializer(
+    serializers.Serializer
+):
+
+    product_id = serializers.UUIDField()
+
+    serials = StockEntrySerialItemSerializer(
+        many=True
+    )
+    
+
+# =========================================================
+# RECEIVE STOCK ENTRY
+# =========================================================
+
+class StockEntryReceiveSerializer(
+    serializers.Serializer
+):
+
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+
+    items = StockEntryReceiveProductSerializer(
+        many=True
+    )
+
+    def validate_items(self, value):
+
+        if not value:
+
+            raise serializers.ValidationError(
+                "Aucun produit reçu."
+            )
+
+        return value

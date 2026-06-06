@@ -261,6 +261,7 @@ class UsersListSerialiser(serializers.ModelSerializer):
     
     has_warehouse_access = serializers.SerializerMethodField()
     warehouse_name = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
     class Meta:
         model=User
         fields=[
@@ -272,8 +273,12 @@ class UsersListSerialiser(serializers.ModelSerializer):
             "created_at",
             "is_deleted",
             "has_warehouse_access",
-            "warehouse_name"
+            "warehouse_name",
+            "permissions",
         ]
+    
+    def get_permissions(self, obj):
+        return obj.permissions
     
     def get_has_warehouse_access(self, obj):
         return obj.warehouse_accesses.filter(

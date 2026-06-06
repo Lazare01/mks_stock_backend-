@@ -4,6 +4,7 @@ class AppPermission:
 
     DASHBOARD_VIEW = "dashboard.view"
     STOCK_VIEW = "stock.view"
+    SUCCURSALE_VIEW = "succursale.view"
     STOCK_MANAGE = "stock.manage"
     TRANSFER_MANAGE = "transfer.manage"
     REPORT_VIEW = "report.view"

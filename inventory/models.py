@@ -10,7 +10,7 @@ from core.models import TimeStampedModel
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from app.models import Citys
-
+from supplier.models import Supplier
 
 class Category(TimeStampedModel):
     """
@@ -322,3 +322,293 @@ class StockMovement(TimeStampedModel):
 
     def __str__(self):
         return f"{self.movement_type} - {self.stock_item.serial_number}"
+
+
+# =========================================================
+# ENTREES STOCK CENTRAL
+# =========================================================
+
+class StockEntryStatus(models.TextChoices):
+
+    DRAFT = "DRAFT", "Brouillon"
+
+    RECEIVED = "RECEIVED", "Réceptionné"
+
+    CANCELLED = "CANCELLED", "Annulé"
+    
+
+class StockEntry(TimeStampedModel):
+    """
+    Entrée de stock provenant d'un fournisseur.
+
+    Exemple :
+
+    Huawei
+        ↓
+    ENT-2026-000001
+        ↓
+    100 Kits Starlink
+    """
+
+    reference = models.CharField(
+        max_length=50,
+        unique=True,
+    )
+
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        related_name="stock_entries",
+    )
+
+    warehouse = models.ForeignKey(
+        "inventory.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="stock_entries",
+    )
+
+    invoice_number = models.CharField(
+        max_length=150,
+    )
+
+    invoice_file = models.FileField(
+        upload_to="supplier_invoices/",
+        null=True,
+        blank=True,
+    )
+
+    expected_delivery_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    received_date = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    notes = models.TextField(
+        blank=True,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=StockEntryStatus.choices,
+        default=StockEntryStatus.DRAFT,
+    )
+
+    class Meta:
+        db_table = "inventory_stock_entries"
+
+    def __str__(self):
+        return self.reference
+    
+
+class StockEntryItem(TimeStampedModel):
+    """
+    Lignes d'une entrée de stock.
+    """
+
+    stock_entry = models.ForeignKey(
+        StockEntry,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name="stock_entry_items",
+    )
+    
+    received_quantity = models.PositiveIntegerField(
+    default=0
+)
+
+    quantity = models.PositiveIntegerField()
+
+    unit_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+    )
+
+    class Meta:
+        db_table = "inventory_stock_entry_items"
+
+    @property
+    def total_cost(self):
+        return self.quantity * self.unit_cost
+
+    def __str__(self):
+        return f"{self.product.name}"
+    
+
+# =========================================================
+# TRANSFERTS AGENCES
+# =========================================================
+
+class TransferStatus(models.TextChoices):
+
+    DRAFT = "DRAFT", "Brouillon"
+
+    IN_TRANSIT = "IN_TRANSIT", "En transit"
+
+    PARTIALLY_RECEIVED = (
+        "PARTIALLY_RECEIVED",
+        "Réception partielle",
+    )
+
+    RECEIVED = "RECEIVED", "Réceptionné"
+
+    CANCELLED = "CANCELLED", "Annulé"
+
+class Transfer(TimeStampedModel):
+    """
+    Réapprovisionnement agence.
+
+    Central
+        ↓
+    Agence
+    """
+
+    reference = models.CharField(
+        max_length=50,
+        unique=True,
+    )
+
+    from_warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name="created_transfers",
+    )
+
+    to_warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name="received_transfers",
+    )
+
+    notes = models.TextField(
+        blank=True,
+    )
+
+    shipped_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    received_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=TransferStatus.choices,
+        default=TransferStatus.DRAFT,
+    )
+
+    class Meta:
+        db_table = "inventory_transfers"
+
+    def __str__(self):
+        return self.reference
+
+
+class TransferItem(TimeStampedModel):
+    """
+    Kits envoyés dans un transfert.
+    """
+
+    transfer = models.ForeignKey(
+        Transfer,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+
+    stock_item = models.ForeignKey(
+        StockItem,
+        on_delete=models.PROTECT,
+        related_name="transfer_items",
+    )
+
+    class Meta:
+        db_table = "inventory_transfer_items"
+
+        unique_together = (
+            "transfer",
+            "stock_item",
+        )
+    
+
+class TransferReceptionStatus(models.TextChoices):
+
+    RECEIVED = "RECEIVED", "Reçu"
+
+    MISSING = "MISSING", "Manquant"
+
+    DAMAGED = "DAMAGED", "Endommagé"
+
+
+
+# =================================
+# Document de validation agence.
+# =================================
+
+class TransferReception(TimeStampedModel):
+    """
+    Validation de réception
+    par le manager agence.
+    """
+
+    transfer = models.OneToOneField(
+        Transfer,
+        on_delete=models.PROTECT,
+        related_name="reception",
+    )
+
+    notes = models.TextField(
+        blank=True,
+    )
+
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="validated_receptions",
+    )
+
+    class Meta:
+        db_table = "inventory_transfer_receptions"
+        
+# =================================
+# Gestion des réceptions partielles.
+# =================================     
+
+class TransferReceptionItem(TimeStampedModel):
+    """
+    Résultat de contrôle
+    de chaque kit reçu.
+    """
+
+    reception = models.ForeignKey(
+        TransferReception,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+
+    stock_item = models.ForeignKey(
+        StockItem,
+        on_delete=models.PROTECT,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=TransferReceptionStatus.choices,
+    )
+
+    notes = models.TextField(
+        blank=True,
+    )
+
+    class Meta:
+        db_table = "inventory_transfer_reception_items"

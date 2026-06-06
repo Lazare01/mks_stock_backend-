@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "core",
     "inventory",
     "app",
+    "supplier",
     "corsheaders",
 ]
 
