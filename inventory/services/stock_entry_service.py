@@ -71,30 +71,27 @@ class StockEntryService:
         items,
         created_by,
     ):
-        
+
         supplier, _ = Supplier.objects.get_or_create(
-        name=supplier_name.strip(),
-        defaults={
-            "is_active": True,
-        },
-)
-
-
-        # Validation warehouse
+            name=supplier_name.strip(),
+            defaults={
+                "is_active": True,
+            },
+        )
 
         warehouse = Warehouse.objects.filter(
-            id=warehouse_id,
+            id=warehouse_id
         ).first()
 
         if not warehouse:
-            raise ValidationError("Entrepôt introuvable.")
+            raise ValidationError(
+                "Entrepôt introuvable."
+            )
 
         if warehouse.warehouse_type != WarehouseType.CENTRAL:
             raise ValidationError(
                 "L'entrée fournisseur doit être faite vers le stock central."
             )
-
-        # Création document
 
         stock_entry = StockEntry.objects.create(
             reference=StockEntryService.generate_reference(),
@@ -102,13 +99,12 @@ class StockEntryService:
             warehouse=warehouse,
             invoice_number=invoice_number,
             expected_delivery_date=expected_delivery_date,
+            received_date=timezone.now(),
             notes=notes,
             created_by=created_by,
-            status=StockEntryStatus.DRAFT,
+            status=StockEntryStatus.RECEIVED,
         )
-        
-        # Création lignes
-        
+
         for item in items:
 
             product = Product.objects.filter(
@@ -120,217 +116,52 @@ class StockEntryService:
                     f"Produit introuvable : {item['product_id']}"
                 )
 
-            StockEntryItem.objects.create(
-                stock_entry=stock_entry,
-                product=product,
-                quantity=item["quantity"],
-                unit_cost=item["unit_cost"],
-                created_by=created_by,
-            )
-        return stock_entry
-    
-    # Validation Serial
-    
-    @staticmethod
-    def validate_serials(serials):
-
-        # =====================================================
-        # SERIALS DU PAYLOAD
-        # =====================================================
-
-        payload_serials = set()
-
-        # =====================================================
-        # MACS DU PAYLOAD
-        # =====================================================
-
-        payload_macs = set()
-
-        for row in serials:
-
-            # =================================================
-            # SERIAL
-            # =================================================
-
-            serial = row["serial_number"].strip()
-            
-            if not serial:
+            if not product.is_serialized:
                 raise ValidationError(
-                    "Le numéro de série est obligatoire."
-    )
-
-            if serial in payload_serials:
-
-                raise ValidationError(
-                    f"Serial dupliqué : {serial}"
+                    f"{product.name} : les produits non sérialisés ne sont pas encore supportés."
                 )
 
-            payload_serials.add(serial)
+            serials = item["serials"]
 
-            # =================================================
-            # MAC ADDRESS
-            # =================================================
-
-            mac = row.get("mac_address")
-
-            if not mac:
-                continue
-
-            mac = mac.strip()
-
-            if mac in payload_macs:
-
-                raise ValidationError(
-                    f"MAC Address dupliquée : {mac}"
-                )
-
-            payload_macs.add(mac)
-
-        # =====================================================
-        # SERIAL DEJA EN BASE
-        # =====================================================
-
-        existing_serials = StockItem.objects.filter(
-            serial_number__in=payload_serials
-        )
-
-        if existing_serials.exists():
-
-            serial = existing_serials.first().serial_number
-
-            raise ValidationError(
-                f"Le serial {serial} existe déjà."
-            )
-
-        # =====================================================
-        # MAC DEJA EN BASE
-        # =====================================================
-
-        existing_macs = StockItem.objects.filter(
-            mac_address__in=payload_macs
-        )
-
-        if existing_macs.exists():
-
-            mac = existing_macs.first().mac_address
-
-            raise ValidationError(
-                f"La MAC Address {mac} existe déjà."
-            )
-    
-    # Réception entrée fournisseur
-    
-    @staticmethod
-    @transaction.atomic
-    def receive_stock_entry(
-        *,
-        stock_entry,
-        items,
-        notes,
-        user,
-    ):
-        if stock_entry.status != StockEntryStatus.DRAFT:
-
-            raise ValidationError(
-                "Cette entrée a déjà été réceptionnée."
-            )
-    
-    
-    # Index lignes commande
-    
-        entry_items = {
-        str(item.product_id): item
-        for item in stock_entry.items.all()
-        }
-    
-    # Boucle produits reçus
-        for received_product in items:
-
-            product_id = str(
-                received_product["product_id"]
-            )
-
-            if product_id not in entry_items:
-
-                raise ValidationError(
-                    "Produit non présent dans la commande."
-                )
-
-            entry_item = entry_items[product_id]
-
-            serials = received_product["serials"]
-            
-            # Validation quantité
-            
-            if len(serials) != entry_item.quantity:
-                raise ValidationError(
-                    f"{entry_item.product.name} : "
-                    f"{entry_item.quantity} serial(s) attendu(s), "
-                    f"{len(serials)} reçu(s)."
-                )
-            
-            # Validation serials
-            
             StockEntryService.validate_serials(
                 serials
             )
-            
-            # Création StockItem
-            
+
+            entry_item = StockEntryItem.objects.create(
+                stock_entry=stock_entry,
+                product=product,
+                quantity=len(serials),
+                received_quantity=len(serials),
+                unit_cost=item["unit_cost"],
+                created_by=created_by,
+            )
+
             for serial_data in serials:
 
                 stock_item = StockItem.objects.create(
-                    product=entry_item.product,
-                    warehouse=stock_entry.warehouse,
-                    serial_number=serial_data["serial_number"],
-                    mac_address=serial_data.get(
-                        "mac_address"
-                    )
-                    or None,
+                    product=product,
+                    warehouse=warehouse,
+                    serial_number=serial_data[
+                        "serial_number"
+                    ].strip(),
+                    mac_address=(
+                        serial_data.get(
+                            "mac_address"
+                        ) or None
+                    ),
                     status=StockItemStatus.AVAILABLE,
-                    created_by=user,
+                    created_by=created_by,
                 )
-            
-            # Mouvement stock
-            
-            StockMovement.objects.create(
+
+                StockMovement.objects.create(
                     stock_item=stock_item,
                     movement_type=MovementType.IN,
-                    to_warehouse=stock_entry.warehouse,
-                    notes=f"Entrée fournisseur {stock_entry.reference}",
-                    created_by=user,
+                    to_warehouse=warehouse,
+                    notes=(
+                        f"Entrée fournisseur "
+                        f"{stock_entry.reference}"
+                    ),
+                    created_by=created_by,
                 )
 
-            entry_item.received_quantity = (
-                entry_item.quantity
-            )
-
-            entry_item.save(
-                update_fields=[
-                    "received_quantity"
-                ]
-            )
-            
-            stock_entry.status = (
-                StockEntryStatus.RECEIVED
-            )
-
-            stock_entry.received_date = (
-                timezone.now()
-            )
-
-            stock_entry.notes = (
-                f"{stock_entry.notes}\n\n{notes}"
-                if notes
-                else stock_entry.notes
-            )
-
-            stock_entry.save(
-                update_fields=[
-                    "status",
-                    "received_date",
-                    "notes",
-                ]
-            )
-            
-            return stock_entry
+        return stock_entry

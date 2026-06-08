@@ -12,24 +12,41 @@ from django.utils.translation import gettext_lazy as _
 from app.models import Citys
 from supplier.models import Supplier
 
-class Category(TimeStampedModel):
-    """
-    Catégorie de produits.
-    Exemple :
-    - Routeur
-    - Antenne
-    - Modem
-    """
 
-    name = models.CharField(max_length=150, unique=True)
+class Category(models.TextChoices):
+    KIT_STANDARD = "KIT_STANDARD", "kit standard"
+    KIT_MINI = "KIT_MINI", "kit mini"
+    AUTRES = "AUTRES","Autres"
+    
+    @classmethod
+    def sku_prefix(cls, category):
+        mapping = {
+            cls.KIT_STANDARD: "KIT",
+            cls.KIT_MINI: "MINI",
+            cls.AUTRES : "PRD"
+        }
+        return mapping.get(category, "PRD")
 
-    description = models.TextField(blank=True)
 
-    class Meta:
-        db_table = "inventory_categories"
+# fonction de generation automatique des skus 
 
-    def __str__(self):
-        return self.name
+
+def generate_sku(category):
+        prefix = Category.sku_prefix(category)
+
+        last_product = (
+            Product.objects
+            .filter(sku__startswith=prefix)
+            .order_by("-sku")
+            .first()
+        )
+
+        if not last_product:
+            return f"{prefix}-000001"
+
+        last_number = int(last_product.sku.split("-")[1])
+
+        return f"{prefix}-{last_number + 1:06d}"
 
 
 class Product(TimeStampedModel):
@@ -43,23 +60,34 @@ class Product(TimeStampedModel):
 
     name = models.CharField(max_length=255)
 
-    category = models.ForeignKey(
-        Category, on_delete=models.PROTECT, related_name="products"
+    category = models.CharField(max_length=250, choices=Category.choices)
+
+    sku = models.CharField(max_length=100, unique=True,blank=True)
+
+    description = models.TextField(blank=True,null=True)
+
+    purchase_price = models.DecimalField(max_digits=12, decimal_places=2,default=0)
+    
+    is_serialized = models.BooleanField(
+        default=True,
+        verbose_name="Produit sérialisé"
     )
 
-    sku = models.CharField(max_length=100, unique=True)
 
-    description = models.TextField(blank=True)
-
-    purchase_price = models.DecimalField(max_digits=12, decimal_places=2)
-
-    selling_price = models.DecimalField(max_digits=12, decimal_places=2)
+    selling_price = models.DecimalField(max_digits=12, decimal_places=2,default=0)
 
     class Meta:
         db_table = "inventory_products"
 
     def __str__(self):
         return self.name
+        
+    def save(self, *args, **kwargs):
+
+        if not self.sku:
+            self.sku = generate_sku(self.category)
+
+        super().save(*args, **kwargs)
 
 
 class ManagerAssignment(TimeStampedModel):
@@ -220,7 +248,6 @@ class Warehouse(TimeStampedModel):
 class StockItemStatus(models.TextChoices):
 
     AVAILABLE = "AVAILABLE", "Disponible"
-
     # En transfert entre agences
     IN_TRANSIT = "IN_TRANSIT", "En transit"
 
@@ -328,6 +355,7 @@ class StockMovement(TimeStampedModel):
 # ENTREES STOCK CENTRAL
 # =========================================================
 
+
 class StockEntryStatus(models.TextChoices):
 
     DRAFT = "DRAFT", "Brouillon"
@@ -335,7 +363,7 @@ class StockEntryStatus(models.TextChoices):
     RECEIVED = "RECEIVED", "Réceptionné"
 
     CANCELLED = "CANCELLED", "Annulé"
-    
+
 
 class StockEntry(TimeStampedModel):
     """
@@ -402,7 +430,7 @@ class StockEntry(TimeStampedModel):
 
     def __str__(self):
         return self.reference
-    
+
 
 class StockEntryItem(TimeStampedModel):
     """
@@ -420,12 +448,12 @@ class StockEntryItem(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="stock_entry_items",
     )
-    
-    received_quantity = models.PositiveIntegerField(
-    default=0
-)
+
+    received_quantity = models.PositiveIntegerField(default=0)
 
     quantity = models.PositiveIntegerField()
+    
+  
 
     unit_cost = models.DecimalField(
         max_digits=12,
@@ -441,11 +469,12 @@ class StockEntryItem(TimeStampedModel):
 
     def __str__(self):
         return f"{self.product.name}"
-    
+
 
 # =========================================================
 # TRANSFERTS AGENCES
 # =========================================================
+
 
 class TransferStatus(models.TextChoices):
 
@@ -461,6 +490,7 @@ class TransferStatus(models.TextChoices):
     RECEIVED = "RECEIVED", "Réceptionné"
 
     CANCELLED = "CANCELLED", "Annulé"
+
 
 class Transfer(TimeStampedModel):
     """
@@ -539,7 +569,7 @@ class TransferItem(TimeStampedModel):
             "transfer",
             "stock_item",
         )
-    
+
 
 class TransferReceptionStatus(models.TextChoices):
 
@@ -550,10 +580,10 @@ class TransferReceptionStatus(models.TextChoices):
     DAMAGED = "DAMAGED", "Endommagé"
 
 
-
 # =================================
 # Document de validation agence.
 # =================================
+
 
 class TransferReception(TimeStampedModel):
     """
@@ -579,10 +609,12 @@ class TransferReception(TimeStampedModel):
 
     class Meta:
         db_table = "inventory_transfer_receptions"
-        
+
+
 # =================================
 # Gestion des réceptions partielles.
-# =================================     
+# =================================
+
 
 class TransferReceptionItem(TimeStampedModel):
     """

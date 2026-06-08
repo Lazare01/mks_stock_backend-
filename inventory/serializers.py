@@ -15,6 +15,7 @@ from inventory.models import (
 )
 from supplier.serializers import SupplierSerializer
 
+
 class WarehouseSerializer(serializers.ModelSerializer):
 
     available_stock = serializers.ReadOnlyField()
@@ -60,6 +61,21 @@ class WarehouseSerializer(serializers.ModelSerializer):
 # STOCK ENTRY ITEM Utilisé pour l'affichage.
 # =========================================================
 
+
+class StockEntrySerialSerializer(serializers.Serializer):
+
+    serial_number = serializers.CharField(max_length=255)
+
+    mac_address = serializers.CharField(
+        max_length=100,
+        required=False,
+        allow_blank=True,
+    )
+
+
+# =========================================================
+# STOCK ENTRY ITEM Utilisé lors de la création.
+# ======================================
 class StockEntryItemSerializer(serializers.ModelSerializer):
 
     product_name = serializers.CharField(
@@ -78,16 +94,10 @@ class StockEntryItemSerializer(serializers.ModelSerializer):
             "unit_cost",
         ]
 
-# =========================================================
-# STOCK ENTRY ITEM Utilisé lors de la création.
-# ======================================
+
 class StockEntryItemCreateSerializer(serializers.Serializer):
 
     product_id = serializers.UUIDField()
-
-    quantity = serializers.IntegerField(
-        min_value=1
-    )
 
     unit_cost = serializers.DecimalField(
         max_digits=12,
@@ -95,17 +105,23 @@ class StockEntryItemCreateSerializer(serializers.Serializer):
         min_value=0.01,
     )
 
+    serials = StockEntrySerialSerializer(many=True)
+
+    def validate_serials(self, value):
+
+        if not value:
+            raise serializers.ValidationError("Au moins un numéro de série est requis.")
+
+        return value
+
+
 class StockEntryCreateSerializer(serializers.Serializer):
 
-    supplier_name = serializers.CharField(
-    max_length=255
-)
+    supplier_name = serializers.CharField(max_length=255)
 
     warehouse_id = serializers.UUIDField()
 
-    invoice_number = serializers.CharField(
-        max_length=150
-    )
+    invoice_number = serializers.CharField(max_length=150)
 
     expected_delivery_date = serializers.DateField(
         required=False,
@@ -117,38 +133,29 @@ class StockEntryCreateSerializer(serializers.Serializer):
         allow_blank=True,
     )
 
-    items = StockEntryItemCreateSerializer(
-        many=True
-    )
+    items = StockEntryItemCreateSerializer(many=True)
 
     def validate_items(self, value):
 
         if not value:
-            raise serializers.ValidationError(
-                "Au moins un produit est requis."
-            )
+            raise serializers.ValidationError("Au moins un produit est requis.")
 
         return value
-
-    
 
     def validate_warehouse_id(self, value):
 
-        warehouse = Warehouse.objects.filter(
-            id=value
-        ).first()
+        warehouse = Warehouse.objects.filter(id=value).first()
 
         if not warehouse:
-
-            raise serializers.ValidationError(
-                "Entrepôt introuvable."
-            )
+            raise serializers.ValidationError("Entrepôt introuvable.")
 
         return value
+
 
 # =========================================================
 # LIST STOCK ENTRY
 # =========================================================
+
 
 class StockEntryListSerializer(serializers.ModelSerializer):
 
@@ -183,17 +190,16 @@ class StockEntryListSerializer(serializers.ModelSerializer):
     def get_item_count(self, obj):
 
         return obj.items.count()
-    
+
 
 # =========================================================
 # DETAIL STOCK ENTRY
 # =========================================================
 
+
 class StockEntryDetailSerializer(serializers.ModelSerializer):
 
-    supplier = SupplierSerializer(
-        read_only=True
-    )
+    supplier = SupplierSerializer(read_only=True)
 
     warehouse_name = serializers.CharField(
         source="warehouse.name",
@@ -224,7 +230,7 @@ class StockEntryDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        
+
 
 # =======================================================
 # Maintenant nous préparons l'import manuel ou Excel.
@@ -234,67 +240,24 @@ class StockEntryDetailSerializer(serializers.ModelSerializer):
 # SERIAL INPUT
 # =========================================================
 
-class StockEntrySerialItemSerializer(
-    serializers.Serializer
-):
 
-    serial_number = serializers.CharField(
-        max_length=255
-    )
+class StockEntrySerialSerializer(serializers.Serializer):
+
+    serial_number = serializers.CharField(max_length=255)
 
     mac_address = serializers.CharField(
         max_length=100,
         required=False,
         allow_blank=True,
     )
-    
-
-class StockEntryReceiveProductSerializer(
-    serializers.Serializer
-):
-
-    product_id = serializers.UUIDField()
-
-    serials = StockEntrySerialItemSerializer(
-        many=True
-    )
-    
-
-# =========================================================
-# RECEIVE STOCK ENTRY
-# =========================================================
-
-class StockEntryReceiveSerializer(
-    serializers.Serializer
-):
-
-    notes = serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
-
-    items = StockEntryReceiveProductSerializer(
-        many=True
-    )
-
-    def validate_items(self, value):
-
-        if not value:
-
-            raise serializers.ValidationError(
-                "Aucun produit reçu."
-            )
-
-        return value
 
 
 # =========================================================
 # STOCK SUMMARY
 # =========================================================
 
-class ProductStockSummarySerializer(
-    serializers.Serializer
-):
+
+class ProductStockSummarySerializer(serializers.Serializer):
 
     id = serializers.UUIDField()
 
@@ -317,14 +280,14 @@ class ProductStockSummarySerializer(
         max_digits=12,
         decimal_places=2,
     )
-    
+
+
 # =========================================================
 # STOCK MOVEMENTS
 # =========================================================
 
-class StockMovementSerializer(
-    serializers.Serializer
-):
+
+class StockMovementSerializer(serializers.Serializer):
 
     id = serializers.UUIDField()
 
@@ -343,9 +306,10 @@ class StockMovementSerializer(
     to_warehouse = serializers.CharField(
         allow_null=True,
     )
-    
-    
+
     # =========================================================
+
+
 # PRODUCTS
 # =========================================================
 
