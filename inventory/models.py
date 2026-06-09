@@ -416,7 +416,7 @@ class StockEntry(TimeStampedModel):
     )
 
     notes = models.TextField(
-        blank=True,
+        blank=True,null=True
     )
 
     status = models.CharField(

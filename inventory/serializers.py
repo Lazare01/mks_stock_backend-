@@ -336,3 +336,31 @@ class ProductSerializer(serializers.ModelSerializer):
             "selling_price",
             "description",
         ]
+
+
+from rest_framework import serializers
+
+
+
+# ==================================================
+# ============ STOCK DASH MOVEMENT =================
+# ==================================================
+class DashboardMovementSerializer(serializers.Serializer):
+
+    date = serializers.DateTimeField()
+
+    type = serializers.CharField()
+
+    product = serializers.CharField()
+
+    quantity = serializers.IntegerField()
+
+    from_warehouse = serializers.CharField(
+        allow_null=True
+    )
+
+    to_warehouse = serializers.CharField(
+        allow_null=True
+    )
+
+    status = serializers.CharField()

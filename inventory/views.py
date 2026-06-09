@@ -42,11 +42,14 @@ from inventory.serializers import (
     ProductStockSummarySerializer,
     StockMovementSerializer,
     ProductSerializer,
+    DashboardMovementSerializer
 )
 
 from inventory.services.stock_entry_service import (
     StockEntryService,
 )
+
+from inventory.services.stock_dash_service import DashboardMovementService
 
 # ================================================================================================
 # ================================================================================================
@@ -275,7 +278,7 @@ class StockSummaryView(APIView):
 
         results = []
 
-        products = Product.objects.select_related("category").all()
+        products = Product.objects.all()
 
         for product in products:
 
@@ -294,7 +297,7 @@ class StockSummaryView(APIView):
                     "id": product.id,
                     "name": product.name,
                     "sku": product.sku,
-                    "category": product.category.name,
+                    "category": product.get_category_display(),
                     "central_stock": central_stock,
                     "branch_stock": branch_stock,
                     "purchase_price": product.purchase_price,
@@ -337,7 +340,7 @@ class StockMovementListView(APIView):
             results.append(
                 {
                     "id": movement.id,
-                    "movement_type": movement.movement_type,
+                    "movement_type": movement.get_movement_type_display(),
                     "product_name": movement.stock_item.product.name,
                     "serial_number": movement.stock_item.serial_number,
                     "movement_date": movement.movement_date,
@@ -354,6 +357,28 @@ class StockMovementListView(APIView):
 
         serializer = StockMovementSerializer(
             results,
+            many=True,
+        )
+
+        return Response(serializer.data)
+
+
+
+class DashboardMovementListView(APIView):
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(self, request):
+
+        data = (
+            DashboardMovementService
+            .get_latest_movements(limit=100)
+        )
+
+        serializer = DashboardMovementSerializer(
+            data,
             many=True,
         )
 

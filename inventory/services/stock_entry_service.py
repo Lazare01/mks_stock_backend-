@@ -56,6 +56,44 @@ class StockEntryService:
         next_number = last_number + 1
 
         return f"ENT-{year}-{next_number:06d}"
+    
+    
+    @staticmethod
+    def validate_serials(serials):
+
+        if not serials:
+            raise ValidationError(
+                "Au moins un numéro de série est requis."
+            )
+
+        serial_numbers = set()
+
+        for serial in serials:
+
+            serial_number = (
+                serial.get("serial_number", "")
+                .strip()
+            )
+
+            if not serial_number:
+                raise ValidationError(
+                    "Le numéro de série est obligatoire."
+                )
+
+            if serial_number in serial_numbers:
+                raise ValidationError(
+                    f"Numéro de série dupliqué : {serial_number}"
+                )
+
+            serial_numbers.add(serial_number)
+
+            # Vérifier qu'il n'existe pas déjà en stock
+            if StockItem.objects.filter(
+                serial_number=serial_number
+            ).exists():
+                raise ValidationError(
+                    f"Le numéro de série '{serial_number}' existe déjà."
+                )
 
     # Création entrée fournisseur
 

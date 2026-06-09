@@ -8,7 +8,8 @@ from inventory.views import (
     StockEntryViewSet,
     StockSummaryView,
     StockMovementListView,
-    ProductViewSet
+    ProductViewSet,
+    DashboardMovementListView
 )
 
 router = DefaultRouter()
@@ -39,6 +40,11 @@ router.register(
 
 
 urlpatterns = [
+    path(
+        "dashboard/movements/",
+        DashboardMovementListView.as_view(),
+        name="dashboard-movements",
+    ),
     path(
         "stock-summary/",
         StockSummaryView.as_view(),
