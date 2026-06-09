@@ -90,7 +90,7 @@ class StockEntryItemSerializer(serializers.ModelSerializer):
             "id",
             "product",
             "product_name",
-            "quantity",
+            "received_quantity",
             "unit_cost",
         ]
 
@@ -104,6 +104,7 @@ class StockEntryItemCreateSerializer(serializers.Serializer):
         decimal_places=2,
         min_value=0.01,
     )
+    received_quantity = serializers.IntegerField(min_value=1)
 
     serials = StockEntrySerialSerializer(many=True)
 
@@ -346,7 +347,7 @@ from rest_framework import serializers
 # ============ STOCK DASH MOVEMENT =================
 # ==================================================
 class DashboardMovementSerializer(serializers.Serializer):
-
+   
     date = serializers.DateTimeField()
 
     type = serializers.CharField()

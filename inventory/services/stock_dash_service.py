@@ -21,8 +21,9 @@ class DashboardMovementService:
         stock_entries = (
             StockEntryItem.objects.select_related(
                 "product",
-                "stock_entry",
-                "stock_entry__warehouse",
+       
+        "stock_entry",
+        "stock_entry__warehouse",
             )
             .filter(
                 stock_entry__status=StockEntryStatus.RECEIVED
@@ -34,11 +35,12 @@ class DashboardMovementService:
 
             results.append(
                 {
+                    
                     "date": (
                         item.stock_entry.received_date
                         or item.created_at
                     ),
-                    "type": "IN",
+                    "type": "Entrée",
                     "product": item.product.name,
                     "quantity": item.received_quantity,
                     "from_warehouse": None,

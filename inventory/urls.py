@@ -41,7 +41,7 @@ router.register(
 
 urlpatterns = [
     path(
-        "dashboard/movements/",
+        "dash-stock/movements/",
         DashboardMovementListView.as_view(),
         name="dashboard-movements",
     ),

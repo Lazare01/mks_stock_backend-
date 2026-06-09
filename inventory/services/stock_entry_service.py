@@ -116,6 +116,10 @@ class StockEntryService:
                 "is_active": True,
             },
         )
+        
+        print(" ")
+        print(items)
+        print(" ")
 
         warehouse = Warehouse.objects.filter(
             id=warehouse_id
@@ -168,8 +172,7 @@ class StockEntryService:
             entry_item = StockEntryItem.objects.create(
                 stock_entry=stock_entry,
                 product=product,
-                quantity=len(serials),
-                received_quantity=len(serials),
+                received_quantity=item["received_quantity"],
                 unit_cost=item["unit_cost"],
                 created_by=created_by,
             )

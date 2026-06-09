@@ -450,10 +450,7 @@ class StockEntryItem(TimeStampedModel):
     )
 
     received_quantity = models.PositiveIntegerField(default=0)
-
-    quantity = models.PositiveIntegerField()
     
-  
 
     unit_cost = models.DecimalField(
         max_digits=12,
@@ -465,7 +462,7 @@ class StockEntryItem(TimeStampedModel):
 
     @property
     def total_cost(self):
-        return self.quantity * self.unit_cost
+        return self.received_quantity * self.unit_cost
 
     def __str__(self):
         return f"{self.product.name}"
