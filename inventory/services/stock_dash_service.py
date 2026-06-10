@@ -42,8 +42,9 @@ class DashboardMovementService:
                     ),
                     "movement_type": "IN",
                     "product_name": item.product.name,
+                    "product_category" : item.product.category,
                     "quantity_received": item.received_quantity,
-                    "from_warehouse": None,
+                    "from_warehouse": item.stock_entry.supplier.name,
                     "to_warehouse": (
                         item.stock_entry.warehouse.name
                     ),

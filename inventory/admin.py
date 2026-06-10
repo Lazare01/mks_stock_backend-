@@ -20,10 +20,16 @@ class StockentryitemAdmin(admin.ModelAdmin):
     list_display = [
         "stock_entry",
         "product",
+        "product_category",
         "received_quantity",
         "unit_cost",
         "total_cost",
     ]
+    
+    def product_category(self, obj):
+        return obj.product.get_category_display()
+
+    product_category.short_description = "Catégorie"
 
 
 class ProductAdmin(admin.ModelAdmin):

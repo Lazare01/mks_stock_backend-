@@ -349,6 +349,8 @@ from rest_framework import serializers
 class DashboardMovementSerializer(serializers.Serializer):
    
     date = serializers.DateTimeField()
+    
+    product_category = serializers.CharField()
 
     movement_type = serializers.CharField()
 
@@ -359,9 +361,7 @@ class DashboardMovementSerializer(serializers.Serializer):
     from_warehouse = serializers.CharField(
         allow_null=True
     )
-
     to_warehouse = serializers.CharField(
         allow_null=True
     )
-
     status_entry = serializers.CharField()

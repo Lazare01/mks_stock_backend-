@@ -293,30 +293,39 @@ class StockEntryViewSetTest(viewsets.ModelViewSet):
 
 
 
+REORDER_THRESHOLD = 5
 
 class StockSummaryView(APIView):
 
-    permission_classes = [
-        IsAuthenticated,
-    ]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
 
-        results = []
+        products = Product.objects.annotate(
+            central_stock=Count(
+                "stock_items",
+                filter=Q(
+                    stock_items__status=StockItemStatus.AVAILABLE,
+                    stock_items__warehouse__warehouse_type=WarehouseType.CENTRAL,
+                ),
+            ),
+            branch_stock=Count(
+                "stock_items",
+                filter=Q(
+                    stock_items__status=StockItemStatus.AVAILABLE,
+                    stock_items__warehouse__warehouse_type=WarehouseType.BRANCH,
+                ),
+            ),
+        )
 
-        products = Product.objects.all()
+        results = []
 
         for product in products:
 
-            central_stock = product.stock_items.filter(
-                status=StockItemStatus.AVAILABLE,
-                warehouse__warehouse_type=WarehouseType.CENTRAL,
-            ).count()
-
-            branch_stock = product.stock_items.filter(
-                status=StockItemStatus.AVAILABLE,
-                warehouse__warehouse_type=WarehouseType.BRANCH,
-            ).count()
+            total_stock = (
+                product.central_stock +
+                product.branch_stock
+            )
 
             results.append(
                 {
@@ -324,10 +333,13 @@ class StockSummaryView(APIView):
                     "name": product.name,
                     "sku": product.sku,
                     "category": product.get_category_display(),
-                    "central_stock": central_stock,
-                    "branch_stock": branch_stock,
+                    "central_stock": product.central_stock,
+                    "branch_stock": product.branch_stock,
+                    "total_stock": total_stock,
                     "purchase_price": product.purchase_price,
                     "selling_price": product.selling_price,
+                    "reorder_threshold": REORDER_THRESHOLD,
+                    "needs_restock": total_stock < REORDER_THRESHOLD,
                 }
             )
 
@@ -337,7 +349,6 @@ class StockSummaryView(APIView):
         )
 
         return Response(serializer.data)
-
 
 # =========================================================
 # STOCK MOVEMENTS
