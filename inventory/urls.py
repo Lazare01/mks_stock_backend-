@@ -9,7 +9,8 @@ from inventory.views import (
     StockSummaryView,
     StockMovementListView,
     ProductViewSet,
-    DashboardMovementListView
+    DashboardMovementListView,
+    StockEntryViewSetTest
 )
 
 router = DefaultRouter()

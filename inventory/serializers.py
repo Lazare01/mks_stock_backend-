@@ -350,11 +350,11 @@ class DashboardMovementSerializer(serializers.Serializer):
    
     date = serializers.DateTimeField()
 
-    type = serializers.CharField()
+    movement_type = serializers.CharField()
 
-    product = serializers.CharField()
+    product_name = serializers.CharField()
 
-    quantity = serializers.IntegerField()
+    quantity_received = serializers.IntegerField()
 
     from_warehouse = serializers.CharField(
         allow_null=True
@@ -364,4 +364,4 @@ class DashboardMovementSerializer(serializers.Serializer):
         allow_null=True
     )
 
-    status = serializers.CharField()
+    status_entry = serializers.CharField()

@@ -268,6 +268,32 @@ class StockEntryViewSet(viewsets.ModelViewSet):
 # =========================================================
 
 
+
+class StockEntryViewSetTest(viewsets.ModelViewSet):
+
+    permission_classes = [
+        IsAuthenticated,
+        CanManageStock,
+    ]
+
+    def get_queryset(self):
+
+        return StockEntry.objects.all()
+
+    def get_serializer_class(self):
+
+        if self.action == "create":
+            return StockEntryCreateSerializer
+
+        if self.action == "retrieve":
+            return StockEntryDetailSerializer
+
+        return StockEntryListSerializer
+
+
+
+
+
 class StockSummaryView(APIView):
 
     permission_classes = [

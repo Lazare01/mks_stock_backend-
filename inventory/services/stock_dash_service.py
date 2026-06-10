@@ -40,14 +40,14 @@ class DashboardMovementService:
                         item.stock_entry.received_date
                         or item.created_at
                     ),
-                    "type": "Entrée",
-                    "product": item.product.name,
-                    "quantity": item.received_quantity,
+                    "movement_type": "IN",
+                    "product_name": item.product.name,
+                    "quantity_received": item.received_quantity,
                     "from_warehouse": None,
                     "to_warehouse": (
                         item.stock_entry.warehouse.name
                     ),
-                    "status": item.stock_entry.get_status_display(),
+                    "status_entry": item.stock_entry.get_status_display(),
                 }
             )
 
