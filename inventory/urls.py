@@ -3,23 +3,19 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from inventory.views import (
-    WarehouseViewSet,
+  
     SupplierViewSet,
     StockEntryViewSet,
     StockSummaryView,
     StockMovementListView,
     ProductViewSet,
     DashboardMovementListView,
-    StockEntryViewSetTest
+    
 )
 
 router = DefaultRouter()
 
-router.register(
-    r"warehouses",
-    WarehouseViewSet,
-    basename="warehouse",
-)
+
 
 router.register(
     r"suppliers",

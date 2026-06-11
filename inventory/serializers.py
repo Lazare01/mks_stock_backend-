@@ -11,50 +11,28 @@ from inventory.models import (
     Product,
     StockEntry,
     StockEntryItem,
-    StockEntryStatus,
+  
 )
 from supplier.serializers import SupplierSerializer
 
 
-class WarehouseSerializer(serializers.ModelSerializer):
 
-    available_stock = serializers.ReadOnlyField()
-    current_manager = serializers.SerializerMethodField()
-    city_name = serializers.SerializerMethodField()
 
+# =========================================================
+# STOCK ENTRY ITEM Utilisé pour l'affichage.
+# =========================================================
+
+
+class ProductSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Warehouse
-        fields = [
+        model=Product
+        fields =[
             "id",
-            "name",
-            "warehouse_type",
-            "city",
-            "city_name",
-            "address",
-            "status",
-            "available_stock",
-            "current_manager",
-            "created_at",
-            "updated_at",
-        ]
+            "name","category","sku","description","selling_price","reorder_threshold"
+            ]
 
-    def get_city_name(self, instance):
-        if instance.city:
-            return instance.city.name
 
-    def get_current_manager(self, obj):
 
-        manager = obj.current_manager
-
-        if not manager:
-            return None
-
-        return {
-            "id": manager.id,
-            "username": manager.username,
-            "email": manager.email,
-            "full_name": manager.get_full_name(),
-        }
 
 
 # =========================================================
@@ -311,32 +289,6 @@ class StockMovementSerializer(serializers.Serializer):
     # =========================================================
 
 
-# PRODUCTS
-# =========================================================
-
-from inventory.models import Product
-
-
-class ProductSerializer(serializers.ModelSerializer):
-
-    category_name = serializers.CharField(
-        source="category.name",
-        read_only=True,
-    )
-
-    class Meta:
-        model = Product
-
-        fields = [
-            "id",
-            "name",
-            "sku",
-            "category",
-            "category_name",
-            "purchase_price",
-            "selling_price",
-            "description",
-        ]
 
 
 from rest_framework import serializers

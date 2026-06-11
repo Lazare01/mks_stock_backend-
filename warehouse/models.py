@@ -103,7 +103,7 @@ class ManagerAssignment(TimeStampedModel):
     )
 
     warehouse = models.ForeignKey(
-        "inventory.Warehouse",
+       Warehouse,
         on_delete=models.PROTECT,
         related_name="manager_assignments",
     )

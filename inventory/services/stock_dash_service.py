@@ -26,7 +26,7 @@ class DashboardMovementService:
         "stock_entry__warehouse",
             )
             .filter(
-                stock_entry__status=StockEntryStatus.RECEIVED
+                stock_entry__status=StockEntryStatus.ACTIVE
             )
             .order_by("-created_at")[:limit]
         )

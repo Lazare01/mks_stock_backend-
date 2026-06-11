@@ -240,7 +240,7 @@ class UserWarehouseAccess(TimeStampedModel):
     )
 
     warehouse = models.ForeignKey(
-        "inventory.Warehouse", on_delete=models.CASCADE, related_name="authorized_users"
+        "warehouse.Warehouse", on_delete=models.CASCADE, related_name="authorized_users"
     )
 
     # =====================================================

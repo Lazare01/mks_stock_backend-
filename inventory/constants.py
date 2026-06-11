@@ -5,7 +5,7 @@ class StockEntryStatus(models.TextChoices):
 
     DRAFT = "DRAFT", "Brouillon"
 
-    RECEIVED = "RECEIVED", "Réceptionné"
+    ACTIVE = "RECEIVED", "Réceptionné"
 
     CANCELLED = "CANCELLED", "Annulé"
     
@@ -23,3 +23,14 @@ class StockItemStatus(models.TextChoices):
 
     DAMAGED = "DAMAGED", "Endommagé"
 
+
+
+class CategoryProduct(models.TextChoices):
+    NETWORK = "NETWORK", "Equipements reseaux"
+    ACCESSORY = "ACCESSORY", "Accessoires"
+    AUTRES = "AUTRES", "Autres"
+
+    @classmethod
+    def sku_prefix(cls, category):
+        mapping = {cls.NETWORK: "EQR", cls.ACCESSORY: "ACC", cls.AUTRES: "PRD"}
+        return mapping.get(category, "PRD")

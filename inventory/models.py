@@ -12,25 +12,18 @@ from django.utils.translation import gettext_lazy as _
 from app.models import Citys
 from supplier.models import Supplier
 from warehouse.models import Warehouse
-from .constants import StockEntryStatus
+from .constants import StockEntryStatus,CategoryProduct
 
 
-class Category(models.TextChoices):
-    NETWORK = "NETWORK", "Equipements reseaux"
-    ACCESSORY = "ACCESSORY", "Accessoires"
-    AUTRES = "AUTRES", "Autres"
-
-    @classmethod
-    def sku_prefix(cls, category):
-        mapping = {cls.EQ_RESEAU: "EQR", cls.ACCESSOIRES: "ACC", cls.AUTRES: "PRD"}
-        return mapping.get(category, "PRD")
 
 
 # fonction de generation automatique des skus
 
 
+
+
 def generate_sku(category):
-    prefix = Category.sku_prefix(category)
+    prefix = CategoryProduct.sku_prefix(category)
 
     last_product = (
         Product.objects.filter(sku__startswith=prefix).order_by("-sku").first()
@@ -43,7 +36,6 @@ def generate_sku(category):
 
     return f"{prefix}-{last_number + 1:06d}"
 
-
 class Product(TimeStampedModel):
     """
     Produit générique.
@@ -54,11 +46,11 @@ class Product(TimeStampedModel):
     """
 
     name = models.CharField(max_length=255)
-    category = models.CharField(max_length=250, choices=Category.choices)
+    category = models.CharField(max_length=250, choices=CategoryProduct.choices)
     sku = models.CharField(max_length=100, unique=True, blank=True)
     description = models.TextField(blank=True, null=True)
     selling_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    reorder_threshold = models.PositiveIntegerField(default=20)
+    reorder_threshold = models.PositiveIntegerField(default=5)
 
     class Meta:
         db_table = "inventory_products"
@@ -70,6 +62,21 @@ class Product(TimeStampedModel):
 
         if not self.sku:
             self.sku = generate_sku(self.category)
+            
+        
+        if self.pk:
+
+            old_product = Product.objects.filter(pk=self.pk).first()
+
+            if (
+                old_product
+                and old_product.selling_price != self.selling_price
+            ):
+                ProductPriceHistory.objects.create(
+                    product=self,
+                    old_price=old_product.selling_price,
+                    new_price=self.selling_price,
+                )
 
         super().save(*args, **kwargs)
 
@@ -183,7 +190,7 @@ class StockEntry(TimeStampedModel):
     )
 
     warehouse = models.ForeignKey(
-        "inventory.Warehouse",
+        "warehouse.Warehouse",
         on_delete=models.PROTECT,
         related_name="stock_entries",
     )
@@ -268,11 +275,11 @@ class InventoryStock(TimeStampedModel):
     product = models.ForeignKey(
         Product,
         on_delete=models.PROTECT,
-        related_name="stocks",
+        related_name="product_inventory",
     )
 
     warehouse = models.ForeignKey(
-        Warehouse,
+        "warehouse.Warehouse",
         on_delete=models.PROTECT,
         related_name="stocks",
     )
@@ -289,6 +296,9 @@ class InventoryStock(TimeStampedModel):
 
     def __str__(self):
         return f"{self.product.name} - " f"{self.warehouse.name} " f"({self.quantity})"
+
+
+
 
 
 # =========================================================
@@ -327,13 +337,13 @@ class Transfer(TimeStampedModel):
     )
 
     from_warehouse = models.ForeignKey(
-        Warehouse,
+        "warehouse.Warehouse",
         on_delete=models.PROTECT,
         related_name="created_transfers",
     )
 
     to_warehouse = models.ForeignKey(
-        Warehouse,
+        "warehouse.Warehouse",
         on_delete=models.PROTECT,
         related_name="received_transfers",
     )

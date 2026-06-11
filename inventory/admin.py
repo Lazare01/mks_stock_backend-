@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import StockEntry, StockEntryItem, Product, StockMovement
+from .models import StockEntry, StockEntryItem, Product, StockMovement,InventoryStock
 
 
 class StockEntryAdmin(admin.ModelAdmin):
@@ -52,9 +52,18 @@ class ProductAdmin(admin.ModelAdmin):
         "description",
         "selling_price",
     ]
+    
+
+class StockInventoryAdmin(admin.ModelAdmin):
+    list_display=[
+        "product",
+        "warehouse",
+        "quantity"
+    ]
 
 
 admin.site.register(Product, ProductAdmin)
 admin.site.register(StockEntry, StockEntryAdmin)
 admin.site.register(StockEntryItem, StockentryitemAdmin)
 admin.site.register(StockMovement, StockMovementAdmin)
+admin.site.register(InventoryStock,StockInventoryAdmin)
