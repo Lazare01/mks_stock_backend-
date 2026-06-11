@@ -26,8 +26,7 @@ from .base_viewset import SoftDeleteModelViewSet
 
 from .permissions import CanUserManager
 
-from inventory.models  import Warehouse,WarehouseType,ManagerAssignment
-
+from warehouse.models import WarehouseType, ManagerAssignment,Warehouse
 
 class AuthViewSet(viewsets.GenericViewSet):
 

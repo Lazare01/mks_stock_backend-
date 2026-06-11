@@ -8,11 +8,10 @@ from core.models import User, UserWarehouseAccess
 from core.constants.user_roles import UserRole
 
 from inventory.models import (
-    Warehouse,
-    WarehouseType,
-    ManagerAssignment,
+    Warehouse
 )
 
+from warehouse.models import WarehouseType,ManagerAssignment
 
 class UserService:
 

@@ -9,9 +9,9 @@ from django.utils import timezone
 
 from inventory.models import (
     Warehouse,
-    WarehouseType,
-    ManagerAssignment,
 )
+
+from warehouse.models import WarehouseType, ManagerAssignment
 
 from core.models import (
     User,
@@ -22,30 +22,20 @@ from core.models import (
 # REGISTER
 # =========================================================
 
+
 class RegisterUserSerializer(serializers.ModelSerializer):
 
-    password = serializers.CharField(
-        write_only=True,
-        required=True,
-        min_length=6
-    )
-    
+    password = serializers.CharField(write_only=True, required=True, min_length=6)
+
     role = serializers.CharField(
         write_only=True,
         required=True,
     )
 
-
     class Meta:
         model = User
-        fields = [
-            'id',
-            'username',
-            'phone_number',
-            'password',
-            'role'
-        ]
-        
+        fields = ["id", "username", "phone_number", "password", "role"]
+
     # =====================================================
     # VALIDATION ROLE
     # =====================================================
@@ -56,21 +46,17 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         if value == UserRole.ADMIN:
 
             # Vérifier s'il existe déjà un admin
-            admin_exists = User.objects.filter(
-                role=UserRole.ADMIN
-            ).exists()
+            admin_exists = User.objects.filter(role=UserRole.ADMIN).exists()
 
             if admin_exists:
 
-                raise serializers.ValidationError(
-                    "Un administrateur existe déjà."
-                )
+                raise serializers.ValidationError("Un administrateur existe déjà.")
 
         return value
+
     # =====================================================
     # CREATE USER
     # =====================================================
-
 
     # def create(self, validated_data):
 
@@ -84,21 +70,17 @@ class RegisterUserSerializer(serializers.ModelSerializer):
     #     user.save()
 
     #     return user
-    
-   
+
     def create(self, validated_data):
-        
 
         password = validated_data.pop("password")
-        
+
         # =====================================================
         # REACTIVER UN UTILISATEUR SUPPRIME
         # =====================================================
-            
-        user = User.all_objects.filter(
-            username=validated_data["username"]
-        ).first()
-        
+
+        user = User.all_objects.filter(username=validated_data["username"]).first()
+
         if user and user.is_deleted:
 
             user.is_deleted = False
@@ -108,24 +90,19 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
             user.role = validated_data["role"]
 
-            user.phone_number = validated_data.get(
-                "phone_number",
-                user.phone_number
-            )
+            user.phone_number = validated_data.get("phone_number", user.phone_number)
 
             user.set_password(password)
 
             user.save()
 
             return user
-        
+
         # =====================================================
         # CREATION NORMALE
         # =====================================================
 
-        user = User.objects.create_user(
-            **validated_data
-        )
+        user = User.objects.create_user(**validated_data)
 
         user.set_password(password)
         user.save()
@@ -141,9 +118,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             ).first()
 
             if not central_warehouse:
-                raise serializers.ValidationError(
-                    "Aucun warehouse CENTRAL n'existe."
-                )
+                raise serializers.ValidationError("Aucun warehouse CENTRAL n'existe.")
 
             # Accès au warehouse central
             UserWarehouseAccess.objects.get_or_create(
@@ -156,7 +131,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
                     "can_manage_sales": True,
                     "can_manage_installations": True,
                     "is_active": True,
-                }
+                },
             )
 
             # Affectation comme manager du warehouse central
@@ -166,7 +141,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
                 defaults={
                     "start_date": timezone.now().date(),
                     "is_active": True,
-                }
+                },
             )
 
         return user
@@ -175,6 +150,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 # =========================================================
 # JWT TOKEN
 # =========================================================
+
 
 class ObtenTokenPairSerializer(TokenObtainPairSerializer):
 
@@ -186,9 +162,9 @@ class ObtenTokenPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
 
         # Informations personnalisées
-        token['username'] = user.username
-        token['role'] = user.role
-        
+        token["username"] = user.username
+        token["role"] = user.role
+
         return token
 
     def validate(self, attrs):
@@ -201,15 +177,11 @@ class ObtenTokenPairSerializer(TokenObtainPairSerializer):
             user = User.objects.get(username=username)
 
         except User.DoesNotExist:
-            raise AuthenticationFailed(
-                "Aucun utilisateur trouvé avec ce username."
-            )
+            raise AuthenticationFailed("Aucun utilisateur trouvé avec ce username.")
 
         # Vérifier mot de passe
         if not user.check_password(password):
-            raise AuthenticationFailed(
-                "Mot de passe incorrect."
-            )
+            raise AuthenticationFailed("Mot de passe incorrect.")
 
         # Génération du token
         data = super().validate(attrs)
@@ -222,16 +194,14 @@ class ObtenTokenPairSerializer(TokenObtainPairSerializer):
         }
 
         return data
-    
+
 
 # =========================================================
 # ALL USERS
 # =========================================================
 class UserCreateSerializer(serializers.ModelSerializer):
 
-    password = serializers.CharField(
-        write_only=True
-    )
+    password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
@@ -248,9 +218,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
 
-        return UserService.create_user(
-            validated_data
-        )
+        return UserService.create_user(validated_data)
+
 
 # =========================================================
 # ALL USERS
@@ -258,13 +227,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UsersListSerialiser(serializers.ModelSerializer):
-    
+
     has_warehouse_access = serializers.SerializerMethodField()
     warehouse_name = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
+
     class Meta:
-        model=User
-        fields=[
+        model = User
+        fields = [
             "id",
             "username",
             "role",
@@ -276,18 +246,18 @@ class UsersListSerialiser(serializers.ModelSerializer):
             "warehouse_name",
             "permissions",
         ]
-    
+
     def get_permissions(self, obj):
         return obj.permissions
-    
+
     def get_has_warehouse_access(self, obj):
-        return obj.warehouse_accesses.filter(
-            is_active=True
-        ).exists()
-        
+        return obj.warehouse_accesses.filter(is_active=True).exists()
+
     def get_warehouse_name(self, obj):
-        access = obj.warehouse_accesses.filter(
-            is_active=True
-        ).select_related("warehouse").first()
+        access = (
+            obj.warehouse_accesses.filter(is_active=True)
+            .select_related("warehouse")
+            .first()
+        )
 
         return access.warehouse.name if access else None

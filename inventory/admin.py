@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import StockEntry, StockEntryItem, Product, StockItem, StockMovement
+from .models import StockEntry, StockEntryItem, Product, StockMovement
 
 
 class StockEntryAdmin(admin.ModelAdmin):
@@ -25,32 +25,17 @@ class StockentryitemAdmin(admin.ModelAdmin):
         "unit_cost",
         "total_cost",
     ]
-    
+
     def product_category(self, obj):
         return obj.product.get_category_display()
 
     product_category.short_description = "Catégorie"
 
 
-class ProductAdmin(admin.ModelAdmin):
-    list_display = [
-        "name",
-        "category",
-        "sku",
-        "description",
-        "purchase_price",
-        "is_serialized",
-        "selling_price",
-    ]
-
-
-class StockItemAdmin(admin.ModelAdmin):
-    list_display = ["product", "warehouse", "serial_number", "mac_address", "status"]
 
 
 class StockMovementAdmin(admin.ModelAdmin):
     list_display = [
-        "stock_item",
         "movement_type",
         "from_warehouse",
         "to_warehouse",
@@ -59,8 +44,17 @@ class StockMovementAdmin(admin.ModelAdmin):
     ]
 
 
+class ProductAdmin(admin.ModelAdmin):
+    list_display = [
+        "name",
+        "category",
+        "sku",
+        "description",
+        "selling_price",
+    ]
+
+
+admin.site.register(Product, ProductAdmin)
 admin.site.register(StockEntry, StockEntryAdmin)
 admin.site.register(StockEntryItem, StockentryitemAdmin)
-admin.site.register(Product, ProductAdmin)
-admin.site.register(StockItem, StockItemAdmin)
 admin.site.register(StockMovement, StockMovementAdmin)

@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from rest_framework.permissions import IsAuthenticated
 
-from inventory.models import Warehouse, StockItemStatus
+from warehouse.models import Warehouse,   Warehouse,WarehouseType, ManagerAssignment
 from inventory.serializers import WarehouseSerializer
 
 from core.services.access_services import AccessService
@@ -20,9 +20,7 @@ from core.models import UserWarehouseAccess, User
 from core.constants.user_roles import UserRole
 
 from .models import (
-    Warehouse,
-    WarehouseType,
-    ManagerAssignment,
+  
     Product,
     StockEntry,
     StockMovement,
@@ -48,6 +46,8 @@ from inventory.serializers import (
 from inventory.services.stock_entry_service import (
     StockEntryService,
 )
+
+from inventory.constants import StockItemStatus
 
 from inventory.services.stock_dash_service import DashboardMovementService
 
