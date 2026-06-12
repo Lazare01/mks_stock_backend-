@@ -9,9 +9,10 @@ from inventory.models import (
     InventoryStock,
     Product
 )
+from warehouse.models import Warehouse
 
 
-class DashboardMovementService:
+class DashboardStockService:
 
     @staticmethod
     def get_latest_movements(limit=50):
@@ -161,3 +162,56 @@ class DashboardMovementService:
             })
 
         return data
+    
+        
+    # ====================================
+    # ------------  stock brach summury --
+    # ====================================
+    
+    @staticmethod
+    def get_branches_summary():
+
+        branches = Warehouse.objects.filter(
+            warehouse_type=WarehouseType.BRANCH
+        )
+
+        result = []
+
+        for branch in branches:
+
+            critical = 0
+            low = 0
+            healthy = 0
+
+            stocks = (
+                InventoryStock.objects
+                .select_related("product")
+                .filter(
+                    warehouse=branch
+                )
+            )
+
+            for stock in stocks:
+
+                threshold = (
+                    stock.product.reorder_threshold
+                )
+
+                if stock.quantity == 0:
+                    critical += 1
+
+                elif stock.quantity <= threshold:
+                    low += 1
+
+                else:
+                    healthy += 1
+
+            result.append({
+                "warehouse_id": branch.id,
+                "warehouse_name": branch.name,
+                "critical": critical,
+                "low": low,
+                "healthy": healthy,
+            })
+
+        return result

@@ -1,0 +1,160 @@
+from django.db import transaction
+from django.utils import timezone
+
+from rest_framework.exceptions import ValidationError
+
+from warehouse.models import Warehouse
+
+from inventory.models import (
+    Transfer,
+    TransferItem,
+    TransferStatus,
+    InventoryStock,
+    StockMovement,
+    MovementType,
+)
+
+
+class TransferItemService:
+
+    @staticmethod
+    def generate_reference():
+
+        year = timezone.now().year
+
+        last_transfer = (
+            Transfer.objects.filter(
+                reference__startswith=f"TRF-{year}"
+            )
+            .order_by("-reference")
+            .first()
+        )
+
+        if not last_transfer:
+            return f"TRF-{year}-000001"
+
+        last_number = int(
+            last_transfer.reference.split("-")[-1]
+        )
+
+        return f"TRF-{year}-{last_number + 1:06d}"
+
+    # ========================
+    #  use product to transfer
+    # ========================
+    
+    @staticmethod
+    def use_detail_product_to_transfer():
+        pass
+        
+
+
+
+    @staticmethod
+    @transaction.atomic
+    def create_transfer(
+        *,
+        from_warehouse_id,
+        to_warehouse_id,
+        notes=None,
+        items=None,
+    ):
+
+        from_warehouse = Warehouse.objects.get(
+            id=from_warehouse_id
+        )
+
+        to_warehouse = Warehouse.objects.get(
+            id=to_warehouse_id
+        )
+
+        if from_warehouse.id == to_warehouse.id:
+            raise ValidationError(
+                "Le dépôt source et destination doivent être différents."
+            )
+
+        transfer = Transfer.objects.create(
+            reference=TransferItemService.generate_reference(),
+            from_warehouse=from_warehouse,
+            to_warehouse=to_warehouse,
+            notes=notes or "",
+            status=TransferStatus.DRAFT,
+        )
+
+        for item in items:
+
+            TransferItem.objects.create(
+                transfer=transfer,
+                product_id=item["product_id"],
+                quantity_sent=item["quantity_sent"],
+            )
+
+        return transfer
+
+    @staticmethod
+    @transaction.atomic
+    def ship_transfer(
+        *,
+        transfer_id,
+    ):
+
+        transfer = (
+            Transfer.objects
+            .select_related(
+                "from_warehouse",
+                "to_warehouse",
+            )
+            .prefetch_related(
+                "items",
+                "items__product",
+            )
+            .get(id=transfer_id)
+        )
+
+        if transfer.status != TransferStatus.DRAFT:
+            raise ValidationError(
+                "Seul un transfert brouillon peut être expédié."
+            )
+
+        for item in transfer.items.all():
+
+            stock = InventoryStock.objects.get(
+                product=item.product,
+                warehouse=transfer.from_warehouse,
+            )
+
+            if stock.quantity < item.quantity_sent:
+                raise ValidationError(
+                    f"Stock insuffisant pour "
+                    f"{item.product.name}"
+                )
+
+            stock.quantity -= item.quantity_sent
+
+            stock.save(
+                update_fields=["quantity"]
+            )
+
+            StockMovement.objects.create(
+                product=item.product,
+                movement_type=MovementType.TRANSFER,
+                from_warehouse=transfer.from_warehouse,
+                to_warehouse=transfer.to_warehouse,
+                quantity=item.quantity_sent,
+                notes=f"Transfert {transfer.reference}",
+            )
+
+        transfer.status = TransferStatus.IN_TRANSIT
+
+        transfer.shipped_at = timezone.now()
+
+        transfer.save(
+            update_fields=[
+                "status",
+                "shipped_at",
+            ]
+        )
+
+        return transfer
+
+       

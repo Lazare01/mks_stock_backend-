@@ -34,3 +34,38 @@ class CategoryProduct(models.TextChoices):
     def sku_prefix(cls, category):
         mapping = {cls.NETWORK: "EQR", cls.ACCESSORY: "ACC", cls.AUTRES: "PRD"}
         return mapping.get(category, "PRD")
+
+
+class TransferStatus(models.TextChoices):
+
+    DRAFT = "DRAFT", "Brouillon"
+
+    IN_TRANSIT = "IN_TRANSIT", "En transit"
+
+    PARTIALLY_RECEIVED = (
+        "PARTIALLY_RECEIVED",
+        "Réception partielle",
+    )
+
+    RECEIVED = "RECEIVED", "Réceptionné"
+
+    CANCELLED = "CANCELLED", "Annulé"
+
+
+
+class TransferReceptionStatus(models.TextChoices):
+
+    RECEIVED = (
+        "RECEIVED",
+        "Reçu"
+    )
+
+    MISSING = (
+        "MISSING",
+        "Manquant"
+    )
+
+    DAMAGED = (
+        "DAMAGED",
+        "Endommagé"
+    )

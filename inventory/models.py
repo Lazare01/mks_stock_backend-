@@ -12,8 +12,7 @@ from django.utils.translation import gettext_lazy as _
 from app.models import Citys
 from supplier.models import Supplier
 from warehouse.models import Warehouse
-from .constants import StockEntryStatus,CategoryProduct
-
+from .constants import StockEntryStatus,CategoryProduct,TransferStatus,TransferReceptionStatus
 
 
 
@@ -306,30 +305,7 @@ class InventoryStock(TimeStampedModel):
 # =========================================================
 
 
-class TransferStatus(models.TextChoices):
-
-    DRAFT = "DRAFT", "Brouillon"
-
-    IN_TRANSIT = "IN_TRANSIT", "En transit"
-
-    PARTIALLY_RECEIVED = (
-        "PARTIALLY_RECEIVED",
-        "Réception partielle",
-    )
-
-    RECEIVED = "RECEIVED", "Réceptionné"
-
-    CANCELLED = "CANCELLED", "Annulé"
-
-
 class Transfer(TimeStampedModel):
-    """
-    Réapprovisionnement agence.
-
-    Central
-        ↓
-    Agence
-    """
 
     reference = models.CharField(
         max_length=50,
@@ -337,19 +313,21 @@ class Transfer(TimeStampedModel):
     )
 
     from_warehouse = models.ForeignKey(
-        "warehouse.Warehouse",
+        Warehouse,
         on_delete=models.PROTECT,
-        related_name="created_transfers",
+        related_name="outgoing_transfers",
     )
 
     to_warehouse = models.ForeignKey(
-        "warehouse.Warehouse",
+        Warehouse,
         on_delete=models.PROTECT,
-        related_name="received_transfers",
+        related_name="incoming_transfers",
     )
 
-    notes = models.TextField(
-        blank=True,
+    status = models.CharField(
+        max_length=30,
+        choices=TransferStatus.choices,
+        default=TransferStatus.DRAFT,
     )
 
     shipped_at = models.DateTimeField(
@@ -362,10 +340,8 @@ class Transfer(TimeStampedModel):
         blank=True,
     )
 
-    status = models.CharField(
-        max_length=30,
-        choices=TransferStatus.choices,
-        default=TransferStatus.DRAFT,
+    notes = models.TextField(
+        blank=True,
     )
 
     class Meta:
@@ -373,37 +349,39 @@ class Transfer(TimeStampedModel):
 
     def __str__(self):
         return self.reference
+    
+    
+    
+class TransferItem(TimeStampedModel):
 
+    transfer = models.ForeignKey(
+        Transfer,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
 
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+    )
 
-class TransferReceptionStatus(models.TextChoices):
+    quantity_sent = models.PositiveIntegerField()
 
-    RECEIVED = "RECEIVED", "Reçu"
+    class Meta:
+        db_table = "inventory_transfer_items"
 
-    MISSING = "MISSING", "Manquant"
-
-    DAMAGED = "DAMAGED", "Endommagé"
-
-
-# =================================
-# Document de validation agence.
-# =================================
-
-
+    def __str__(self):
+        return self.product.name
+    
+    
+    
+    
 class TransferReception(TimeStampedModel):
-    """
-    Validation de réception
-    par le manager agence.
-    """
 
     transfer = models.OneToOneField(
         Transfer,
         on_delete=models.PROTECT,
         related_name="reception",
-    )
-
-    notes = models.TextField(
-        blank=True,
     )
 
     received_by = models.ForeignKey(
@@ -412,20 +390,18 @@ class TransferReception(TimeStampedModel):
         related_name="validated_receptions",
     )
 
+    notes = models.TextField(
+        blank=True,
+    )
+
     class Meta:
         db_table = "inventory_transfer_receptions"
 
 
-# =================================
-# Gestion des réceptions partielles.
-# =================================
+
 
 
 class TransferReceptionItem(TimeStampedModel):
-    """
-    Résultat de contrôle
-    de chaque kit reçu.
-    """
 
     reception = models.ForeignKey(
         TransferReception,
@@ -433,6 +409,13 @@ class TransferReceptionItem(TimeStampedModel):
         related_name="items",
     )
 
+    transfer_item = models.ForeignKey(
+        TransferItem,
+        on_delete=models.PROTECT,
+        related_name="reception_items",
+    )
+
+    quantity_received = models.PositiveIntegerField()
 
     status = models.CharField(
         max_length=20,
@@ -445,4 +428,3 @@ class TransferReceptionItem(TimeStampedModel):
 
     class Meta:
         db_table = "inventory_transfer_reception_items"
-

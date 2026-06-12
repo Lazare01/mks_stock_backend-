@@ -3,14 +3,14 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from inventory.views import (
-  
     SupplierViewSet,
     StockEntryViewSet,
     StockMovementListView,
     ProductViewSet,
     DashboardMovementListView,
-    DashboardInventoryStockListView
-    
+    DashboardInventoryStockListView,
+    DashsStockBranchInventory,
+    TransferViewSet
 )
 
 router = DefaultRouter()
@@ -36,6 +36,12 @@ router.register(
 )
 
 
+router.register(
+    r"transfers",
+    TransferViewSet,
+    basename="transfers",
+)
+
 urlpatterns = [
     path(
         "dash-stock/movements/",
@@ -46,6 +52,10 @@ urlpatterns = [
         "stock-inventory/",
         DashboardInventoryStockListView.as_view(),
         name="stock-summary",
+    ),path
+        (  "stock-branch-summary/",
+        DashsStockBranchInventory.as_view(),
+        name="stock-branch-summary",
     ),
     path(
     "stock-movements/",
