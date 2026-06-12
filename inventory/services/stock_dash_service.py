@@ -1,9 +1,13 @@
 from collections import defaultdict
+from django.db.models import Sum
+from warehouse.constants import WarehouseType
 
 from inventory.models import (
     StockEntryItem,
     StockEntryStatus,
     Transfer,
+    InventoryStock,
+    Product
 )
 
 
@@ -107,3 +111,53 @@ class DashboardMovementService:
         )
 
         return results[:limit]
+    
+    # ====================================
+    # ------------ inventory stock -------
+    # ====================================
+    
+    @staticmethod
+    def inventory_overview():
+
+        data = []
+
+        products = Product.objects.all()
+
+        for product in products:
+
+            central_stock = (
+                InventoryStock.objects
+                .filter(
+                    product=product,
+                     warehouse__warehouse_type=WarehouseType.CENTRAL
+                )
+                .aggregate(
+                    total=Sum("quantity")
+                )["total"]
+                or 0
+            )
+
+            branches_stock = (
+                InventoryStock.objects
+                .filter(
+                    product=product,
+                    warehouse__warehouse_type=WarehouseType.BRANCH
+                )
+                .aggregate(
+                    total=Sum("quantity")
+                )["total"]
+                or 0
+            )
+
+            data.append({
+                "id": product.id,
+                "name": product.name,
+                "sku": product.sku,
+                "stock_central": central_stock,
+                "product_category": product.category,
+                "stock_branches": branches_stock,
+                "selling_price": product.selling_price,
+                "reorder_threshold": product.reorder_threshold,
+            })
+
+        return data

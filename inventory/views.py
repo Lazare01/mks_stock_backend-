@@ -40,7 +40,8 @@ from inventory.serializers import (
     ProductStockSummarySerializer,
     StockMovementSerializer,
     ProductSerializer,
-    DashboardMovementSerializer
+    DashboardMovementSerializer,
+    DashboardInventorySerializer
 )
 
 from inventory.services.stock_entry_service import (
@@ -244,65 +245,6 @@ class StockEntryViewSetTest(viewsets.ModelViewSet):
         return StockEntryListSerializer
 
 
-
-
-REORDER_THRESHOLD = 5
-
-class StockSummaryView(APIView):
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-
-        products = Product.objects.annotate(
-            central_stock=Count(
-                "stock_items",
-                filter=Q(
-                    stock_items__status=StockItemStatus.AVAILABLE,
-                    stock_items__warehouse__warehouse_type=WarehouseType.CENTRAL,
-                ),
-            ),
-            branch_stock=Count(
-                "stock_items",
-                filter=Q(
-                    stock_items__status=StockItemStatus.AVAILABLE,
-                    stock_items__warehouse__warehouse_type=WarehouseType.BRANCH,
-                ),
-            ),
-        )
-
-        results = []
-
-        for product in products:
-
-            total_stock = (
-                product.central_stock +
-                product.branch_stock
-            )
-
-            results.append(
-                {
-                    "id": product.id,
-                    "name": product.name,
-                    "sku": product.sku,
-                    "category": product.get_category_display(),
-                    "central_stock": product.central_stock,
-                    "branch_stock": product.branch_stock,
-                    "total_stock": total_stock,
-                    "purchase_price": product.purchase_price,
-                    "selling_price": product.selling_price,
-                    "reorder_threshold": REORDER_THRESHOLD,
-                    "needs_restock": total_stock < REORDER_THRESHOLD,
-                }
-            )
-
-        serializer = ProductStockSummarySerializer(
-            results,
-            many=True,
-        )
-
-        return Response(serializer.data)
-
 # =========================================================
 # STOCK MOVEMENTS
 # =========================================================
@@ -368,6 +310,28 @@ class DashboardMovementListView(APIView):
         )
 
         serializer = DashboardMovementSerializer(
+            data,
+            many=True,
+        )
+
+        return Response(serializer.data)
+    
+
+
+class DashboardInventoryStockListView(APIView):
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(self, request):
+
+        data = (
+            DashboardMovementService
+            .inventory_overview()
+        )
+
+        serializer = DashboardInventorySerializer(
             data,
             many=True,
         )

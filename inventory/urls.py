@@ -6,10 +6,10 @@ from inventory.views import (
   
     SupplierViewSet,
     StockEntryViewSet,
-    StockSummaryView,
     StockMovementListView,
     ProductViewSet,
     DashboardMovementListView,
+    DashboardInventoryStockListView
     
 )
 
@@ -43,8 +43,8 @@ urlpatterns = [
         name="dashboard-movements",
     ),
     path(
-        "stock-summary/",
-        StockSummaryView.as_view(),
+        "stock-inventory/",
+        DashboardInventoryStockListView.as_view(),
         name="stock-summary",
     ),
     path(

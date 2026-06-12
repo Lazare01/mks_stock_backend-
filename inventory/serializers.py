@@ -11,12 +11,8 @@ from inventory.models import (
     Product,
     StockEntry,
     StockEntryItem,
-  
 )
 from supplier.serializers import SupplierSerializer
-
-
-
 
 # =========================================================
 # STOCK ENTRY ITEM Utilisé pour l'affichage.
@@ -25,14 +21,16 @@ from supplier.serializers import SupplierSerializer
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
-        model=Product
-        fields =[
+        model = Product
+        fields = [
             "id",
-            "name","category","sku","description","selling_price","reorder_threshold"
-            ]
-
-
-
+            "name",
+            "category",
+            "sku",
+            "description",
+            "selling_price",
+            "reorder_threshold",
+        ]
 
 
 # =========================================================
@@ -289,19 +287,16 @@ class StockMovementSerializer(serializers.Serializer):
     # =========================================================
 
 
-
-
 from rest_framework import serializers
-
 
 
 # ==================================================
 # ============ STOCK DASH MOVEMENT =================
 # ==================================================
 class DashboardMovementSerializer(serializers.Serializer):
-   
+
     date = serializers.DateTimeField()
-    
+
     product_category = serializers.CharField()
 
     movement_type = serializers.CharField()
@@ -310,10 +305,30 @@ class DashboardMovementSerializer(serializers.Serializer):
 
     quantity_received = serializers.IntegerField()
 
-    from_warehouse = serializers.CharField(
-        allow_null=True
-    )
-    to_warehouse = serializers.CharField(
-        allow_null=True
-    )
+    from_warehouse = serializers.CharField(allow_null=True)
+    to_warehouse = serializers.CharField(allow_null=True)
     status_entry = serializers.CharField()
+
+
+# ==================================================
+# ============ STOCK DASH inventory =================
+# ==================================================
+
+
+class DashboardInventorySerializer(serializers.Serializer):
+
+    id = serializers.IntegerField()
+
+    name = serializers.CharField()
+
+    sku = serializers.CharField()
+
+    product_category = serializers.CharField()
+
+    stock_central = serializers.IntegerField()
+
+    stock_branches = serializers.IntegerField()
+
+    selling_price = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+    reorder_threshold = serializers.IntegerField()

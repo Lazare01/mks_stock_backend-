@@ -6,13 +6,9 @@ from core.models import TimeStampedModel
 from inventory.constants import StockItemStatus
 from app.models import Citys
 from django.utils.translation import gettext_lazy as _
+from .constants import WarehouseType
 
 
-
-class WarehouseType(models.TextChoices):
-
-    CENTRAL = "CENTRAL", "Stock Central"
-    BRANCH = "BRANCH", "Agence"
 
 
 class Warehouse(TimeStampedModel):
