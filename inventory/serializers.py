@@ -6,13 +6,7 @@ from .models import Warehouse
 
 from supplier.models import Supplier
 
-from inventory.models import (
-    Warehouse,
-    Product,
-    StockEntry,
-    StockEntryItem,
-    Transfer
-)
+from inventory.models import Warehouse, Product, StockEntry, StockEntryItem, Transfer
 from supplier.serializers import SupplierSerializer
 
 from .constants import TransferReceptionStatus
@@ -232,34 +226,6 @@ class StockEntrySerialSerializer(serializers.Serializer):
     )
 
 
-# =========================================================
-# STOCK SUMMARY
-# =========================================================
-
-
-class ProductStockSummarySerializer(serializers.Serializer):
-
-    id = serializers.UUIDField()
-
-    name = serializers.CharField()
-
-    sku = serializers.CharField()
-
-    category = serializers.CharField()
-
-    central_stock = serializers.IntegerField()
-
-    branch_stock = serializers.IntegerField()
-
-    purchase_price = serializers.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-    )
-
-    selling_price = serializers.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-    )
 
 
 # =========================================================
@@ -337,227 +303,15 @@ class DashboardInventorySerializer(serializers.Serializer):
     reorder_threshold = serializers.IntegerField()
 
 
-
 # ==================================================
 # ============ STOCK branch summary ================
 # ==================================================
 
+
 class DashboardStockbrachSummary(serializers.Serializer):
     warehouse_id = serializers.UUIDField()
     warehouse_name = serializers.CharField()
-    critical=serializers.IntegerField()
-    low=serializers.IntegerField()
-    healthy=serializers.IntegerField()
-    
-    
+    critical = serializers.IntegerField()
+    low = serializers.IntegerField()
+    healthy = serializers.IntegerField()
 
-
-# ===============================================
-# ============ TRANSFER ITEMS    ================
-# ===============================================
-
-class UseDetailProductToTransfer(serializers.Serializer):
-    product_id = serializers.UUIDField()
-    product_category = serializers.CharField()
-    product_quantity_stock = serializers.IntegerField()
-    
-    
-
-class TransferItemCreateSerializer(
-    serializers.Serializer
-):
-
-    product_id = serializers.IntegerField()
-
-    quantity_sent = serializers.IntegerField(
-        min_value=1
-    )
-
-class TransferCreateSerializer(
-    serializers.Serializer
-):
-
-    from_warehouse_id = serializers.IntegerField()
-
-    to_warehouse_id = serializers.IntegerField()
-
-    notes = serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
-
-    items = TransferItemCreateSerializer(
-        many=True
-    )
-
-    def validate(self, attrs):
-
-        if (
-            attrs["from_warehouse_id"]
-            ==
-            attrs["to_warehouse_id"]
-        ):
-            raise serializers.ValidationError(
-                "Le dépôt source et destination doivent être différents."
-            )
-
-        return attrs
-
-class TransferListSerializer(
-    serializers.ModelSerializer
-):
-
-    from_warehouse = serializers.CharField(
-        source="from_warehouse.name",
-        read_only=True,
-    )
-
-    to_warehouse = serializers.CharField(
-        source="to_warehouse.name",
-        read_only=True,
-    )
-
-    total_items = serializers.SerializerMethodField()
-
-    class Meta:
-
-        model = Transfer
-
-        fields = (
-            "id",
-            "reference",
-            "status",
-            "from_warehouse",
-            "to_warehouse",
-            "total_items",
-            "shipped_at",
-            "received_at",
-            "created_at",
-        )
-
-    def get_total_items(
-        self,
-        obj,
-    ):
-        return obj.items.count()
-
-from rest_framework import serializers
-
-from inventory.models import TransferItem
-
-
-class TransferItemDetailSerializer(
-    serializers.ModelSerializer
-):
-
-    product_name = serializers.CharField(
-        source="product.name",
-        read_only=True,
-    )
-
-    product_sku = serializers.CharField(
-        source="product.sku",
-        read_only=True,
-    )
-
-    product_category = serializers.CharField(
-        source="product.category",
-        read_only=True,
-    )
-
-    class Meta:
-
-        model = TransferItem
-
-        fields = (
-            "id",
-            "product",
-            "product_name",
-            "product_sku",
-            "product_category",
-            "quantity_sent",
-        )
-
-class TransferDetailSerializer(
-    serializers.ModelSerializer
-):
-
-    from_warehouse = serializers.CharField(
-        source="from_warehouse.name",
-        read_only=True,
-    )
-
-    to_warehouse = serializers.CharField(
-        source="to_warehouse.name",
-        read_only=True,
-    )
-
-    items = TransferItemDetailSerializer(
-        many=True,
-        read_only=True,
-    )
-
-    class Meta:
-
-        model = Transfer
-
-        fields = (
-            "id",
-            "reference",
-            "status",
-            "from_warehouse",
-            "to_warehouse",
-            "notes",
-            "shipped_at",
-            "received_at",
-            "created_at",
-            "items",
-        )
-
-class TransferReceptionItemSerializer(
-    serializers.Serializer
-):
-
-    transfer_item_id = serializers.IntegerField()
-
-    quantity_received = serializers.IntegerField(
-        min_value=0
-    )
-
-    status = serializers.ChoiceField(
-        choices=TransferReceptionStatus.choices
-    )
-
-    notes = serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
-    
-
-
-# reception complete 
-
-class TransferReceptionSerializer(
-    serializers.Serializer
-):
-
-    notes = serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
-
-    items = TransferReceptionItemSerializer(
-        many=True
-    )
-
-    def validate_items(
-        self,
-        value,
-    ):
-
-        if not value:
-            raise serializers.ValidationError(
-                "Au moins un article est requis."
-            )
-
-        return value

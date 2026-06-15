@@ -365,7 +365,7 @@ class TransferItem(TimeStampedModel):
         on_delete=models.PROTECT,
     )
 
-    quantity_sent = models.PositiveIntegerField()
+    quantity_sent = models.PositiveIntegerField(default=1)
 
     class Meta:
         db_table = "inventory_transfer_items"
@@ -413,9 +413,11 @@ class TransferReceptionItem(TimeStampedModel):
         TransferItem,
         on_delete=models.PROTECT,
         related_name="reception_items",
+        null=True,
+        blank=False
     )
 
-    quantity_received = models.PositiveIntegerField()
+    quantity_received = models.PositiveIntegerField(default=0)
 
     status = models.CharField(
         max_length=20,

@@ -13,7 +13,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from rest_framework.decorators import action, permission_classes, api_view
 
-from .models import User,UserWarehouseAccess
+from .models import User, UserWarehouseAccess
 from .serializers import (
     RegisterUserSerializer,
     ObtenTokenPairSerializer,
@@ -26,7 +26,8 @@ from .base_viewset import SoftDeleteModelViewSet
 
 from .permissions import CanUserManager
 
-from warehouse.models import WarehouseType, ManagerAssignment,Warehouse
+from warehouse.models import WarehouseType, ManagerAssignment, Warehouse
+
 
 class AuthViewSet(viewsets.GenericViewSet):
 
@@ -72,6 +73,12 @@ class AuthViewSet(viewsets.GenericViewSet):
 
         user = request.user
 
+        assignment = (
+            user.manager_assignments.filter(is_active=True)
+            .select_related("warehouse")
+            .first()
+        )
+
         return Response(
             {
                 "id": str(user.id),
@@ -80,6 +87,7 @@ class AuthViewSet(viewsets.GenericViewSet):
                 "role": user.role,
                 "permissions": user.permissions,
                 "is_active": user.is_active,
+                "warehouse_id": assignment.warehouse.id if assignment else None,
             }
         )
 

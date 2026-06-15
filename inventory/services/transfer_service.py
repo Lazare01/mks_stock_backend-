@@ -12,8 +12,39 @@ from inventory.models import (
     InventoryStock,
     StockMovement,
     MovementType,
+    Product
 )
 
+
+class ProductTransferService:
+
+    @staticmethod
+    def get_transfer_summary(
+        *,
+        product_id,
+        warehouse_id,
+    ):
+
+        product = Product.objects.get(
+            id=product_id
+        )
+
+        stock = (
+            InventoryStock.objects
+            .filter(
+                product_id=product_id,
+                warehouse_id=warehouse_id,
+            )
+            .first()
+        )
+
+        quantity = stock.quantity if stock else 0
+
+        return {
+            "product_id": product.id,
+            "product_name": product.name,
+            "available_stock": quantity,
+        }
 
 class TransferItemService:
 
@@ -42,14 +73,6 @@ class TransferItemService:
     # ========================
     #  use product to transfer
     # ========================
-    
-    @staticmethod
-    def use_detail_product_to_transfer():
-        pass
-        
-
-
-
     @staticmethod
     @transaction.atomic
     def create_transfer(
