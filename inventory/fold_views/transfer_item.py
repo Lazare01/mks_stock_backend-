@@ -12,8 +12,9 @@ from inventory.fold_serializers.transfer_item import (
     TransferDetailSerializer,
     TransferReceptionSerializer,
     TransferListSerializer,
-  
 )
+
+from django.utils import timezone
 
 # =================== services
 
@@ -24,14 +25,15 @@ from inventory.models import Product
 
 class TransferViewSet(viewsets.ModelViewSet):
 
+    now = timezone.now()
+
     permission_classes = [
         IsAuthenticated,
         CanManageStock,
     ]
 
     def get_queryset(self):
-
-        return (
+        queryset = (
             Transfer.objects.select_related(
                 "from_warehouse",
                 "to_warehouse",
@@ -42,6 +44,30 @@ class TransferViewSet(viewsets.ModelViewSet):
             )
             .order_by("-created_at")
         )
+
+        # Paramètres de filtrage
+        status = self.request.query_params.get("status")
+        from_warehouse = self.request.query_params.get("from_warehouse")
+        to_warehouse = self.request.query_params.get("to_warehouse")
+        reference = self.request.query_params.get("reference")
+
+        if status:
+            queryset = queryset.filter(
+                status=status,
+                created_at__year=self.now.year,
+                created_at__month=self.now.month,
+            )
+
+        if from_warehouse:
+            queryset = queryset.filter(from_warehouse_id=from_warehouse)
+
+        if to_warehouse:
+            queryset = queryset.filter(to_warehouse_id=to_warehouse)
+
+        if reference:
+            queryset = queryset.filter(reference__icontains=reference)
+
+        return queryset
 
     def get_serializer_class(self):
 
@@ -117,4 +143,3 @@ class TransferViewSet(viewsets.ModelViewSet):
         transfer = TransferItemService.cancel_transfer(transfer_id=pk)
 
         return Response(TransferDetailSerializer(transfer).data)
-

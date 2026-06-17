@@ -42,11 +42,6 @@ class TransferStatus(models.TextChoices):
 
     IN_TRANSIT = "IN_TRANSIT", "En transit"
 
-    PARTIALLY_RECEIVED = (
-        "PARTIALLY_RECEIVED",
-        "Réception partielle",
-    )
-
     RECEIVED = "RECEIVED", "Réceptionné"
 
     CANCELLED = "CANCELLED", "Annulé"
