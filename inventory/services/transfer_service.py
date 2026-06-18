@@ -79,6 +79,7 @@ class TransferItemService:
         *,
         from_warehouse_id,
         to_warehouse_id,
+        initiated_by,
         notes=None,
         items=None,
     ):
@@ -102,6 +103,7 @@ class TransferItemService:
             to_warehouse=to_warehouse,
             notes=notes or "",
             status=TransferStatus.DRAFT,
+            created_by=initiated_by
         )
 
         for item in items:

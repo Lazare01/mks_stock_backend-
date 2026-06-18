@@ -363,6 +363,7 @@ class TransferItem(TimeStampedModel):
     product = models.ForeignKey(
         Product,
         on_delete=models.PROTECT,
+        related_name="product_transfer"
     )
 
     quantity_sent = models.PositiveIntegerField(default=1)

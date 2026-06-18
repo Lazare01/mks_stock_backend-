@@ -50,6 +50,7 @@ class TransferViewSet(viewsets.ModelViewSet):
         from_warehouse = self.request.query_params.get("from_warehouse")
         to_warehouse = self.request.query_params.get("to_warehouse")
         reference = self.request.query_params.get("reference")
+      
 
         if status:
             queryset = queryset.filter(
@@ -87,12 +88,14 @@ class TransferViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
 
         serializer.is_valid(raise_exception=True)
+        initiated_by = self.request.user
 
         transfer = TransferItemService.create_transfer(
             from_warehouse_id=serializer.validated_data["from_warehouse_id"],
             to_warehouse_id=serializer.validated_data["to_warehouse_id"],
             notes=serializer.validated_data.get("notes"),
             items=serializer.validated_data["items"],
+            initiated_by=initiated_by
         )
 
         return Response(

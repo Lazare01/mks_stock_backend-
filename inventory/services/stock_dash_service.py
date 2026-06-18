@@ -67,7 +67,7 @@ class DashboardStockService:
                 "to_warehouse",
             )
             .prefetch_related(
-                "items__stock_item__product"
+                "item__product"
             )
             .exclude(status="DRAFT")
             .order_by("-created_at")[:limit]

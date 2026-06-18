@@ -1,16 +1,17 @@
-
 from rest_framework import serializers
-from inventory.models import Product,Transfer
+from inventory.models import Product, Transfer,TransferItem
 from inventory.constants import TransferReceptionStatus
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ===============================================
 # ============ TRANSFER ITEMS    ================
 # ===============================================
 
-class ProductTransferSummarySerializer(
-    serializers.Serializer
-):
+
+class ProductTransferSummarySerializer(serializers.Serializer):
 
     product_id = serializers.IntegerField()
 
@@ -18,7 +19,6 @@ class ProductTransferSummarySerializer(
 
     available_stock = serializers.IntegerField()
 
- 
 
 class TransferItemCreateSerializer(serializers.Serializer):
 
@@ -50,20 +50,26 @@ class TransferCreateSerializer(serializers.Serializer):
         return attrs
 
 
+
+class TransferGetProductItem(serializers.ModelSerializer):
+    product_name=serializers.CharField(source="product.name")
+    class Meta:
+        model=TransferItem
+        fields=["product_name","quantity_sent"]
+
 class TransferListSerializer(serializers.ModelSerializer):
 
     from_warehouse = serializers.CharField(
         source="from_warehouse.name",
         read_only=True,
     )
-
     to_warehouse = serializers.CharField(
         source="to_warehouse.name",
         read_only=True,
     )
-
     total_items = serializers.SerializerMethodField()
-
+    initiated_by = serializers.SerializerMethodField()
+    items=TransferGetProductItem(many=True)
     class Meta:
 
         model = Transfer
@@ -78,6 +84,8 @@ class TransferListSerializer(serializers.ModelSerializer):
             "shipped_at",
             "received_at",
             "created_at",
+            "initiated_by",
+            "items"
         )
 
     def get_total_items(
@@ -85,6 +93,13 @@ class TransferListSerializer(serializers.ModelSerializer):
         obj,
     ):
         return obj.items.count()
+
+    def get_initiated_by(self, obj):
+        if obj.created_by:
+            return obj.created_by.username
+        return None
+    
+    
 
 
 from rest_framework import serializers
