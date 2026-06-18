@@ -79,7 +79,7 @@ class StockEntryItemCreateSerializer(serializers.Serializer):
     )
     received_quantity = serializers.IntegerField(min_value=1)
 
-    serials = StockEntrySerialSerializer(many=True)
+  
 
     def validate_serials(self, value):
 
@@ -272,11 +272,11 @@ class DashboardMovementSerializer(serializers.Serializer):
 
     product_name = serializers.CharField()
 
-    quantity_received = serializers.IntegerField()
+    quantity = serializers.IntegerField()
 
     from_warehouse = serializers.CharField(allow_null=True)
     to_warehouse = serializers.CharField(allow_null=True)
-    status_entry = serializers.CharField()
+    status = serializers.CharField()
 
 
 # ==================================================

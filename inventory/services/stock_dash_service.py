@@ -48,12 +48,12 @@ class DashboardStockService:
                     "movement_type": "IN",
                     "product_name": item.product.name,
                     "product_category" : item.product.category,
-                    "quantity_received": item.received_quantity,
+                    "quantity": item.received_quantity,
                     "from_warehouse": item.stock_entry.supplier.name,
                     "to_warehouse": (
                         item.stock_entry.warehouse.name
                     ),
-                    "status_entry": item.stock_entry.get_status_display(),
+                    "status": item.stock_entry.get_status_display(),
                 }
             )
 
@@ -62,12 +62,13 @@ class DashboardStockService:
         # =====================================
 
         transfers = (
-            Transfer.objects.select_related(
+            Transfer.objects
+            .select_related(
                 "from_warehouse",
                 "to_warehouse",
             )
             .prefetch_related(
-                "item__product"
+                "items__product"
             )
             .exclude(status="DRAFT")
             .order_by("-created_at")[:limit]
@@ -75,24 +76,18 @@ class DashboardStockService:
 
         for transfer in transfers:
 
-            grouped_products = defaultdict(int)
-
             for item in transfer.items.all():
-
-                product_name = (
-                    item.stock_item.product.name
-                )
-
-                grouped_products[product_name] += 1
-
-            for product_name, quantity in grouped_products.items():
 
                 results.append(
                     {
-                        "date": transfer.created_at,
-                        "type": "TRANSFER",
-                        "product": product_name,
-                        "quantity": quantity,
+                        "date": (
+                            transfer.shipped_at
+                            or transfer.created_at
+                        ),
+                        "movement_type": "TRANSFER",
+                        "product_name": item.product.name,
+                        "product_category": item.product.category,
+                        "quantity": item.quantity_sent,
                         "from_warehouse": (
                             transfer.from_warehouse.name
                         ),
@@ -104,6 +99,10 @@ class DashboardStockService:
                         ),
                     }
                 )
+
+        # =====================================
+        # TRI GLOBAL
+        # =====================================
 
         results = sorted(
             results,

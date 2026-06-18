@@ -13,7 +13,7 @@ from app.models import Citys
 from supplier.models import Supplier
 from warehouse.models import Warehouse
 from .constants import StockEntryStatus,CategoryProduct,TransferStatus,TransferReceptionStatus
-
+from django.conf import settings
 
 
 # fonction de generation automatique des skus
@@ -296,10 +296,6 @@ class InventoryStock(TimeStampedModel):
     def __str__(self):
         return f"{self.product.name} - " f"{self.warehouse.name} " f"({self.quantity})"
 
-
-
-
-
 # =========================================================
 # TRANSFERTS AGENCES
 # =========================================================
@@ -343,6 +339,18 @@ class Transfer(TimeStampedModel):
     notes = models.TextField(
         blank=True,
     )
+    
+    cancelled_by = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    null=True,
+    blank=True,
+    on_delete=models.SET_NULL,
+    related_name="cancelled_transfers"
+)
+    cancelled_at = models.DateTimeField(
+    null=True,
+    blank=True,
+)
 
     class Meta:
         db_table = "inventory_transfers"

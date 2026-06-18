@@ -142,7 +142,7 @@ class TransferViewSet(viewsets.ModelViewSet):
         url_path="cancel",
     )
     def cancel(self, request, pk=None):
-
-        transfer = TransferItemService.cancel_transfer(transfer_id=pk)
+    
+        transfer = TransferItemService.cancel_transfer(transfer_id=pk,cancelled_by=request.user)
 
         return Response(TransferDetailSerializer(transfer).data)

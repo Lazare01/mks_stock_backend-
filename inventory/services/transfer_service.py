@@ -182,4 +182,96 @@ class TransferItemService:
 
         return transfer
 
-       
+    
+    @staticmethod
+    @transaction.atomic
+    def cancel_transfer(
+        *,
+        transfer_id,
+        cancelled_by
+    ):
+
+        transfer = (
+            Transfer.objects
+            .select_related(
+                "from_warehouse",
+                "to_warehouse",
+            )
+            .prefetch_related(
+                "items",
+                "items__product",
+            )
+            .get(id=transfer_id)
+        )
+
+        if transfer.status == TransferStatus.CANCELLED:
+            raise ValidationError(
+                "Ce transfert est déjà annulé."
+            )
+
+        if transfer.status == TransferStatus.RECEIVED:
+            raise ValidationError(
+                "Un transfert réceptionné ne peut pas être annulé."
+            )
+
+        # -----------------------
+        # Cas DRAFT
+        # -----------------------
+        if transfer.status == TransferStatus.DRAFT:
+
+            transfer.status = TransferStatus.CANCELLED
+            transfer.cancelled_at = timezone.now()
+            transfer.cancelled_by =cancelled_by
+
+            transfer.save(
+                update_fields=["status","cancelled_at","cancelled_by"]
+            )
+
+            return transfer
+
+        # -----------------------
+        # Cas IN_TRANSIT
+        # -----------------------
+        if transfer.status == TransferStatus.IN_TRANSIT:
+
+            for item in transfer.items.all():
+
+                stock, _ = (
+                    InventoryStock.objects
+                    .get_or_create(
+                        product=item.product,
+                        warehouse=transfer.from_warehouse,
+                        defaults={
+                            "quantity": 0
+                        }
+                    )
+                )
+
+                stock.quantity += item.quantity_sent
+
+                stock.save(
+                    update_fields=["quantity"]
+                )
+
+                StockMovement.objects.create(
+                    product=item.product,
+                    movement_type=MovementType.TRANSFER,
+                    from_warehouse=transfer.to_warehouse,
+                    to_warehouse=transfer.from_warehouse,
+                    quantity=item.quantity_sent,
+                    notes=(
+                        f"Annulation transfert "
+                        f"{transfer.reference}"
+                    ),
+                )
+
+            transfer.status = TransferStatus.CANCELLED
+            transfer.cancelled_at = timezone.now()
+            transfer.cancelled_by =cancelled_by
+
+            transfer.save(
+                update_fields=["status","cancelled_at","cancelled_by"]
+            )
+           
+
+            return transfer
