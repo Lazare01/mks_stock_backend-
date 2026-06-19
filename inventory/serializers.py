@@ -6,7 +6,7 @@ from .models import Warehouse
 
 from supplier.models import Supplier
 
-from inventory.models import Warehouse, Product, StockEntry, StockEntryItem, Transfer
+from inventory.models import Warehouse, Product, StockEntry, StockEntryItem, Transfer,InventoryStock
 from supplier.serializers import SupplierSerializer
 
 from .constants import TransferReceptionStatus
@@ -315,3 +315,25 @@ class DashboardStockbrachSummary(serializers.Serializer):
     low = serializers.IntegerField()
     healthy = serializers.IntegerField()
 
+
+# ==================================================
+# ============ baanch inventory ================
+# ==================================================
+
+
+class BranchInventorySerializer(serializers.ModelSerializer):
+    product_name =serializers.SerializerMethodField()
+    warehouse_name = serializers.SerializerMethodField()
+    product_price =serializers.SerializerMethodField()
+    class Meta : 
+        model=InventoryStock
+        fields = ["product_name","warehouse_name","quantity","product_price"]
+        
+    def get_product_name(self,instance):
+        return instance.product.name
+    
+    def get_warehouse_name(self,instance):
+        return instance.warehouse.name
+    
+    def get_product_price(self,instance):
+        return instance.product.selling_price

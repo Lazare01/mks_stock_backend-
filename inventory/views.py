@@ -11,7 +11,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from inventory.models import Transfer
+from inventory.models import Transfer,InventoryStock
 
 
 
@@ -51,6 +51,7 @@ from inventory.serializers import (
     DashboardMovementSerializer,
     DashboardInventorySerializer,
     DashboardStockbrachSummary,
+    BranchInventorySerializer
 )
 
 
@@ -358,4 +359,24 @@ class DashsStockBranchInventory(APIView):
         )
         
         return Response(serializer.data)
-    
+
+
+# =========================================================
+# BRANCH INVENTORY
+# =========================================================
+
+class BranchInventoryViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class=BranchInventorySerializer
+    permission_classes=[
+        IsAuthenticated
+    ]
+    def get_queryset(self):
+        queryset=InventoryStock.objects.all()
+        
+        warehouse_id = self.request.query_params.get("warehouse_id")
+        
+        if(warehouse_id is not None):
+            queryset=InventoryStock.objects.all().filter(warehouse=warehouse_id)
+        
+        return queryset
+        

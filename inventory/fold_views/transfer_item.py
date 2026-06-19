@@ -121,24 +121,20 @@ class TransferViewSet(viewsets.ModelViewSet):
         return Response(TransferDetailSerializer(transfer).data)
 
     @action(
-        detail=True,
-        methods=["post"],
-        url_path="receive",
-    )
+    detail=True,
+    methods=["post"],
+    url_path="receive",
+)
     def receive(self, request, pk=None):
-
-        serializer = TransferReceptionSerializer(data=request.data)
-
-        serializer.is_valid(raise_exception=True)
 
         transfer = TransferItemService.receive_transfer(
             transfer_id=pk,
-            items=serializer.validated_data["items"],
-            notes=serializer.validated_data.get("notes"),
-            received_by=request.user,
+            received_by=request.user
         )
 
-        return Response(TransferDetailSerializer(transfer).data)
+        return Response(
+            TransferDetailSerializer(transfer).data
+        )
 
     @action(
         detail=True,

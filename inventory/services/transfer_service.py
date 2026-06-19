@@ -12,7 +12,10 @@ from inventory.models import (
     InventoryStock,
     StockMovement,
     MovementType,
-    Product
+    Product,
+    TransferReception,
+    TransferReceptionItem,
+    TransferReceptionStatus
 )
 
 
@@ -181,6 +184,101 @@ class TransferItemService:
         )
 
         return transfer
+
+        
+        
+        
+    @staticmethod
+    @transaction.atomic
+    def receive_transfer(
+        *,
+        transfer_id,
+        received_by,
+        items=None,
+        notes=None,
+    ):
+
+        transfer = (
+            Transfer.objects
+            .select_related(
+                "from_warehouse",
+                "to_warehouse",
+            )
+            .prefetch_related(
+                "items",
+                "items__product",
+            )
+            .get(id=transfer_id)
+        )
+
+        if transfer.status != TransferStatus.IN_TRANSIT:
+            raise ValidationError(
+                "Seul un transfert en transit peut être réceptionné."
+            )
+
+        reception = TransferReception.objects.create(
+            transfer=transfer,
+            received_by=received_by,
+            notes=notes or "",
+        )
+
+        for transfer_item in transfer.items.all():
+
+            # -------------------------
+            # Ajout stock destination
+            # -------------------------
+            stock, _ = (
+                InventoryStock.objects
+                .get_or_create(
+                    product=transfer_item.product,
+                    warehouse=transfer.to_warehouse,
+                    defaults={"quantity": 0},
+                )
+            )
+
+            stock.quantity += transfer_item.quantity_sent
+
+            stock.save(
+                update_fields=["quantity"]
+            )
+
+            # -------------------------
+            # Historique réception
+            # -------------------------
+            TransferReceptionItem.objects.create(
+                reception=reception,
+                transfer_item=transfer_item,
+                quantity_received=transfer_item.quantity_sent,
+                status=TransferReceptionStatus.RECEIVED,
+            )
+
+            # -------------------------
+            # Mouvement stock
+            # -------------------------
+            StockMovement.objects.create(
+                product=transfer_item.product,
+                movement_type=MovementType.IN,
+                from_warehouse=transfer.from_warehouse,
+                to_warehouse=transfer.to_warehouse,
+                quantity=transfer_item.quantity_sent,
+                notes=f"Réception transfert {transfer.reference}",
+            )
+
+        transfer.status = TransferStatus.RECEIVED
+        transfer.received_at = timezone.now()
+
+        transfer.save(
+            update_fields=[
+                "status",
+                "received_at",
+            ]
+        )
+
+        return transfer
+    
+    
+    
+
 
     
     @staticmethod

@@ -2,14 +2,10 @@
 # inventory/models.py
 # =========================================================
 
-import uuid
-from django.db.models import Q
 from django.db import models
 from django.conf import settings
 from core.models import TimeStampedModel
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from app.models import Citys
 from supplier.models import Supplier
 from warehouse.models import Warehouse
 from .constants import StockEntryStatus,CategoryProduct,TransferStatus,TransferReceptionStatus

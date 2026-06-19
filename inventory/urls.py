@@ -11,6 +11,7 @@ from inventory.views import (
     DashboardMovementListView,
     DashboardInventoryStockListView,
     DashsStockBranchInventory,
+    BranchInventoryViewSet
 )
 
 router = DefaultRouter()
@@ -39,6 +40,12 @@ router.register(
     r"transfers",
     TransferViewSet,
     basename="transfers",
+)
+
+router.register(
+    r"branch-inventory",
+    BranchInventoryViewSet,
+    basename="branchinventory",
 )
 
 urlpatterns = [
