@@ -1,5 +1,7 @@
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
+from uuid import UUID
 from core.permissions import CanManageStock
 from inventory.models import Transfer
 
@@ -28,8 +30,7 @@ class TransferViewSet(viewsets.ModelViewSet):
     now = timezone.now()
 
     permission_classes = [
-        IsAuthenticated,
-        CanManageStock,
+        IsAuthenticated
     ]
 
     def get_queryset(self):
@@ -50,7 +51,6 @@ class TransferViewSet(viewsets.ModelViewSet):
         from_warehouse = self.request.query_params.get("from_warehouse")
         to_warehouse = self.request.query_params.get("to_warehouse")
         reference = self.request.query_params.get("reference")
-      
 
         if status:
             queryset = queryset.filter(
@@ -63,7 +63,11 @@ class TransferViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(from_warehouse_id=from_warehouse)
 
         if to_warehouse:
-            queryset = queryset.filter(to_warehouse_id=to_warehouse)
+            try:
+                UUID(str(to_warehouse))
+                queryset = queryset.filter(to_warehouse_id=to_warehouse)
+            except ValueError:
+                raise ValidationError({"to_warehouse": "UUID invalide"})
 
         if reference:
             queryset = queryset.filter(reference__icontains=reference)
@@ -95,7 +99,7 @@ class TransferViewSet(viewsets.ModelViewSet):
             to_warehouse_id=serializer.validated_data["to_warehouse_id"],
             notes=serializer.validated_data.get("notes"),
             items=serializer.validated_data["items"],
-            initiated_by=initiated_by
+            initiated_by=initiated_by,
         )
 
         return Response(
@@ -142,7 +146,9 @@ class TransferViewSet(viewsets.ModelViewSet):
         url_path="cancel",
     )
     def cancel(self, request, pk=None):
-    
-        transfer = TransferItemService.cancel_transfer(transfer_id=pk,cancelled_by=request.user)
+
+        transfer = TransferItemService.cancel_transfer(
+            transfer_id=pk, cancelled_by=request.user
+        )
 
         return Response(TransferDetailSerializer(transfer).data)
