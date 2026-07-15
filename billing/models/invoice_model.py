@@ -6,7 +6,7 @@ from billing.models import Customer
 from inventory.models import Warehouse
 from django.conf import settings
 from decimal import Decimal
-from django.db.models import utils
+from django.db.models import utils,Sum
 
 
 class Invoice(TimeStampedModel):
@@ -63,3 +63,8 @@ class Invoice(TimeStampedModel):
             )["total"]
             or Decimal("0")
         )
+    
+    @property
+    def balance_due(self):
+
+        return self.total_amount - self.paid_amount
