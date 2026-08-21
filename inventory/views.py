@@ -371,12 +371,19 @@ class BranchInventoryViewSet(viewsets.ReadOnlyModelViewSet):
         IsAuthenticated
     ]
     def get_queryset(self):
-        queryset=InventoryStock.objects.all()
+        queryset=InventoryStock.objects.select_related("product", "warehouse").all()
         
         warehouse_id = self.request.query_params.get("warehouse_id")
+        product_id = self.request.query_params.get("product_id")
         
-        if(warehouse_id is not None):
-            queryset=InventoryStock.objects.all().filter(warehouse=warehouse_id)
+        if warehouse_id is not None:
+            queryset=queryset.filter(warehouse=warehouse_id)
+
+        if product_id is not None:
+            queryset=queryset.filter(
+                product_id=product_id,
+                warehouse__warehouse_type=WarehouseType.BRANCH,
+            )
         
         return queryset
         

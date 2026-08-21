@@ -325,9 +325,18 @@ class BranchInventorySerializer(serializers.ModelSerializer):
     product_name =serializers.SerializerMethodField()
     warehouse_name = serializers.SerializerMethodField()
     product_price =serializers.SerializerMethodField()
+    product_id = serializers.UUIDField(source="product.id", read_only=True)
+    warehouse_id = serializers.UUIDField(source="warehouse.id", read_only=True)
     class Meta : 
         model=InventoryStock
-        fields = ["product_name","warehouse_name","quantity","product_price"]
+        fields = [
+            "product_id",
+            "product_name",
+            "warehouse_id",
+            "warehouse_name",
+            "quantity",
+            "product_price",
+        ]
         
     def get_product_name(self,instance):
         return instance.product.name

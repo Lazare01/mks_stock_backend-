@@ -30,10 +30,6 @@ class Invoice(TimeStampedModel):
 
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
-    paid_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-
-    balance_due = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-
     status = models.CharField(
         max_length=30, choices=Status.choices, default=Status.DRAFT
     )
@@ -64,7 +60,8 @@ class Invoice(TimeStampedModel):
             or Decimal("0")
         )
     
+   
     @property
     def balance_due(self):
-
-        return self.total_amount - self.paid_amount
+        balance = self.total_amount - self.paid_amount
+        return max(balance, Decimal("0.00"))

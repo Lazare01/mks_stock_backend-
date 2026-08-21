@@ -46,7 +46,8 @@ INSTALLED_APPS = [
     "supplier",
     "warehouse",
     "corsheaders",
-    "billing"
+    "billing",
+    "finance"
 ]
 
 MIDDLEWARE = [
